@@ -14,14 +14,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,32 +30,26 @@ import com.astrostacker.app.SaveState
 import com.astrostacker.app.ScreenState
 
 /**
- * Экран результата. Ползунок/переключатель управляют ЛОКАЛЬНЫМ (черновым)
- * состоянием, пока пользователь не нажмёт "Применить" - пересчёт по каждому
- * движению ползунка сознательно не делается, см. docs/ARCHITECTURE.md §2.2.
- * `remember(state.X)` синхронизирует черновик с реально применённым
- * значением всякий раз, когда оно меняется (после завершения пересчёта), но
- * не мешает свободно двигать ползунок ДО нажатия кнопки.
+ * Экран результата: итоговый снимок без какой-либо постобработки, переключатель
+ * "земля из первого кадра" (мгновенно, оба варианта уже посчитаны) и сохранение
+ * в галерею того варианта, который сейчас на экране.
  */
 @Composable
 fun ResultScreen(
     state: ScreenState.Result,
-    onApply: (stretchTarget: Float, noiseReductionEnabled: Boolean) -> Unit,
+    onFreezeGroundChanged: (Boolean) -> Unit,
     onSave: () -> Unit,
     onReset: () -> Unit
 ) {
-    var localStretch by remember(state.stretchTarget) { mutableStateOf(state.stretchTarget) }
-    var localNoiseReduction by remember(state.noiseReductionEnabled) { mutableStateOf(state.noiseReductionEnabled) }
-
-    val acceptedCount = state.pipelineResult.frameOutcomes.count { it.accepted }
-    val totalCount = state.pipelineResult.frameOutcomes.size
+    val acceptedCount = state.frameOutcomes.count { it.accepted }
+    val totalCount = state.frameOutcomes.size
     val hasRejected = acceptedCount < totalCount
-    val imageBitmap = remember(state.previewBitmap) { state.previewBitmap.asImageBitmap() }
+    val shown = state.shownBitmap
+    val imageBitmap = remember(shown) { shown.asImageBitmap() }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Тот же приём, что и в FramePickerScreen: weight - на внешнем
-        // непрокручиваемом Column, verticalScroll - на вложенном (иначе
-        // сочетание weight+verticalScroll на одном Column падает при замере).
+        // weight - на внешнем непрокручиваемом Column, verticalScroll - на
+        // вложенном (сочетание weight+verticalScroll на одном Column падает при замере).
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -75,7 +65,7 @@ fun ResultScreen(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(state.previewBitmap.width.toFloat() / state.previewBitmap.height.toFloat())
+                    .aspectRatio(shown.width.toFloat() / shown.height.toFloat())
                     .clip(RoundedCornerShape(12.dp))
             )
 
@@ -91,29 +81,20 @@ fun ResultScreen(
                 )
             }
 
-            Text(stringResource(R.string.result_stretch_label), style = MaterialTheme.typography.titleMedium)
-            Slider(
-                value = localStretch,
-                onValueChange = { localStretch = it },
-                valueRange = 0.05f..0.6f,
-                modifier = Modifier.fillMaxWidth()
-            )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.result_noise_reduction_label), style = MaterialTheme.typography.titleMedium)
-                Switch(checked = localNoiseReduction, onCheckedChange = { localNoiseReduction = it })
-            }
-
-            Button(
-                onClick = { onApply(localStretch, localNoiseReduction) },
-                enabled = !state.isRecomputing,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.result_apply_button))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.result_freeze_ground_label), style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        stringResource(R.string.result_freeze_ground_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(checked = state.freezeGround, onCheckedChange = onFreezeGroundChanged)
             }
 
             when (state.saveState) {

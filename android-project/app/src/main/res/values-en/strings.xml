@@ -3,7 +3,7 @@
     <string name="app_name">AstroStacker</string>
 
     <string name="picker_title">Select frames</string>
-    <string name="picker_instructions">Pick a series of night-sky photos shot from a tripod (camera did not move between shots). At least 2 frames are required; for a visible improvement, 10-15 or more.</string>
+    <string name="picker_instructions">Pick a series of night-sky photos shot from a tripod (camera did not move between shots). Stars are aligned to the first frame, and the ground is taken from the first frame. At least 2 frames are required; for a visible improvement, 10-15 or more.</string>
     <string name="picker_select_frames">Select frames</string>
     <string name="picker_selected_count">Frames selected: %1$d</string>
     <string name="picker_select_dark_frames">Dark frames (optional)</string>
@@ -16,9 +16,7 @@
     <string name="stage_detect_stars">Detecting stars</string>
     <string name="stage_register">Aligning frames</string>
     <string name="stage_stack">Stacking</string>
-    <string name="stage_background">Removing background gradient</string>
-    <string name="stage_stretch">Stretching brightness</string>
-    <string name="stage_noise_reduction">Reducing noise</string>
+    <string name="stage_ground">Ground from the first frame</string>
     <string name="stage_done">Done</string>
     <string name="processing_step_progress">%1$d of %2$d</string>
     <string name="processing_cancel">Cancel</string>
@@ -26,9 +24,8 @@
     <string name="result_title">Result</string>
     <string name="result_frames_accepted">Successfully aligned: %1$d of %2$d frames</string>
     <string name="result_frames_rejected_note">Some frames could not be aligned (too few shared stars) and were left out of the stack.</string>
-    <string name="result_stretch_label">Background stretch level</string>
-    <string name="result_noise_reduction_label">Color noise reduction</string>
-    <string name="result_apply_button">Apply</string>
+    <string name="result_freeze_ground_label">Ground from the first frame</string>
+    <string name="result_freeze_ground_hint">Mountains, trees and other objects come from the first shot; the sky comes from all frames aligned on the stars.</string>
     <string name="result_save_button">Save to gallery</string>
     <string name="result_save_success">Saved to gallery</string>
     <string name="result_save_error">Failed to save the file</string>

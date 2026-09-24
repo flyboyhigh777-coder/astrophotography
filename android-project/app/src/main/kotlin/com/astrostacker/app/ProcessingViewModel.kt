@@ -9,11 +9,10 @@ import com.astrostacker.app.data.ExportRepository
 import com.astrostacker.app.data.ImageDecoding
 import com.astrostacker.app.data.MemoryBudget
 import com.astrostacker.core.DarkFrameCalibrator
-import com.astrostacker.core.FloatImage
 import com.astrostacker.core.FrameInput
+import com.astrostacker.core.FrameOutcome
 import com.astrostacker.core.Pipeline
 import com.astrostacker.core.PipelineConfig
-import com.astrostacker.core.PipelineResult
 import com.astrostacker.core.ProgressUpdate
 import com.astrostacker.core.Stage
 import kotlinx.coroutines.CancellationException
@@ -41,14 +40,20 @@ sealed interface ScreenState {
 
     data class Processing(val progress: ProgressUpdate, val totalFrames: Int) : ScreenState
 
+    /**
+     * Оба варианта результата посчитаны заранее, переключатель на экране
+     * мгновенный: [groundFrozenBitmap] - небо из стека + земля из первого
+     * кадра, [skyOnlyBitmap] - просто все кадры, совмещённые по звёздам.
+     */
     data class Result(
-        val pipelineResult: PipelineResult,
-        val stretchTarget: Float,
-        val noiseReductionEnabled: Boolean,
-        val previewBitmap: Bitmap,
-        val saveState: SaveState = SaveState.Idle,
-        val isRecomputing: Boolean = false
-    ) : ScreenState
+        val frameOutcomes: List<FrameOutcome>,
+        val groundFrozenBitmap: Bitmap,
+        val skyOnlyBitmap: Bitmap,
+        val freezeGround: Boolean = true,
+        val saveState: SaveState = SaveState.Idle
+    ) : ScreenState {
+        val shownBitmap: Bitmap get() = if (freezeGround) groundFrozenBitmap else skyOnlyBitmap
+    }
 }
 
 enum class SaveState { Idle, Saving, Success, Failed }
@@ -60,7 +65,7 @@ sealed interface ErrorMessage {
 }
 
 /**
- * Оркестрация: вызывает `:core` `Pipeline.run`/`Pipeline.postProcess` на
+ * Оркестрация: вызывает `:core` `Pipeline.run` на
  * `Dispatchers.Default`, публикует прогресс и результат через [StateFlow].
  * Без WorkManager - см. обоснование в docs/ARCHITECTURE.md §2.2.
  */
@@ -70,19 +75,6 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
     val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
     private var processingJob: Job? = null
-    private var postProcessJob: Job? = null
-
-    /**
-     * Линейный стек, сохранённый после успешного [startProcessing] - позволяет
-     * [reapplyPostProcessing] пересчитывать только "художественную" часть
-     * (растяжка/шумоподавление), не повторяя детекцию звёзд/регистрацию/сам
-     * стекинг (самая долгая часть пайплайна и она не зависит от этих
-     * параметров) - см. `Pipeline.postProcess` в `:core`.
-     */
-    private var cachedStackedLinear: FloatImage? = null
-
-    /** Порядковый номер последнего запроса [reapplyPostProcessing] - см. комментарий там же (защита от гонки при быстрых повторных нажатиях). */
-    private var postProcessRequestId = 0
 
     fun updateLightFrames(uris: List<Uri>) {
         (_screenState.value as? ScreenState.Picking)?.let { _screenState.value = it.copy(lightFrames = uris) }
@@ -139,14 +131,14 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
                     }
                 }
 
-                cachedStackedLinear = result.stackedLinear
-                val bitmap = withContext(Dispatchers.Default) { ImageDecoding.floatImageToBitmap(result.finalImage) }
-                val defaultConfig = PipelineConfig()
+                val (frozen, skyOnly) = withContext(Dispatchers.Default) {
+                    ImageDecoding.floatImageToBitmap(result.finalImage) to
+                        ImageDecoding.floatImageToBitmap(result.stackedLinear)
+                }
                 _screenState.value = ScreenState.Result(
-                    pipelineResult = result,
-                    stretchTarget = defaultConfig.stretchTargetLevel.toFloat(),
-                    noiseReductionEnabled = defaultConfig.applyNoiseReduction,
-                    previewBitmap = bitmap
+                    frameOutcomes = result.frameOutcomes,
+                    groundFrozenBitmap = frozen,
+                    skyOnlyBitmap = skyOnly
                 )
             } catch (e: CancellationException) {
                 throw e // отмену корутины нельзя "проглатывать" - см. cancelProcessing()
@@ -173,43 +165,9 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
         _screenState.value = ScreenState.Picking()
     }
 
-    /** Кнопка "Применить" на экране результата - пересчитывает только пост-обработку, см. [cachedStackedLinear]. */
-    fun reapplyPostProcessing(stretchTarget: Float, noiseReductionEnabled: Boolean) {
-        val stacked = cachedStackedLinear ?: return
+    fun setFreezeGround(enabled: Boolean) {
         val current = _screenState.value as? ScreenState.Result ?: return
-        _screenState.value = current.copy(isRecomputing = true)
-
-        // Отменяем предыдущий незавершённый пересчёт - иначе быстрые повторные
-        // нажатия "Применить" могут завершиться в другом порядке, чем были
-        // запущены, и более старый (медленный) результат перезапишет более
-        // новый. `cancel()` кооперативен (не останавливает уже выполняющийся
-        // между точками приостановки код мгновенно), поэтому дополнительно
-        // сверяем requestId перед финальной записью состояния - без этого
-        // теоретически возможен короткий "мигающий" кадр от устаревшего
-        // результата даже после отмены его Job.
-        postProcessJob?.cancel()
-        val requestId = ++postProcessRequestId
-        postProcessJob = viewModelScope.launch {
-            try {
-                val config = PipelineConfig(
-                    stretchTargetLevel = stretchTarget.toDouble(),
-                    applyNoiseReduction = noiseReductionEnabled
-                )
-                val finalImage = withContext(Dispatchers.Default) { Pipeline.postProcess(stacked, config) }
-                val bitmap = withContext(Dispatchers.Default) { ImageDecoding.floatImageToBitmap(finalImage) }
-                if (requestId != postProcessRequestId) return@launch
-                val latest = _screenState.value as? ScreenState.Result ?: return@launch
-                _screenState.value = latest.copy(
-                    pipelineResult = latest.pipelineResult.copy(finalImage = finalImage),
-                    stretchTarget = stretchTarget,
-                    noiseReductionEnabled = noiseReductionEnabled,
-                    previewBitmap = bitmap,
-                    isRecomputing = false
-                )
-            } catch (e: CancellationException) {
-                throw e
-            }
-        }
+        _screenState.value = current.copy(freezeGround = enabled, saveState = SaveState.Idle)
     }
 
     fun saveResult() {
@@ -217,7 +175,7 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
         _screenState.value = current.copy(saveState = SaveState.Saving)
         viewModelScope.launch {
             val success = withContext(Dispatchers.IO) {
-                ExportRepository.saveToGallery(getApplication<Application>(), current.previewBitmap)
+                ExportRepository.saveToGallery(getApplication<Application>(), current.shownBitmap)
             }
             val latest = _screenState.value as? ScreenState.Result ?: return@launch
             _screenState.value = latest.copy(saveState = if (success) SaveState.Success else SaveState.Failed)
@@ -230,8 +188,6 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
 
     fun reset() {
         processingJob?.cancel()
-        postProcessJob?.cancel()
-        cachedStackedLinear = null
         _screenState.value = ScreenState.Picking()
     }
 }

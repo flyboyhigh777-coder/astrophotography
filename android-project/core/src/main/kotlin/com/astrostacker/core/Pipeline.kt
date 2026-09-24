@@ -1,7 +1,7 @@
 package com.astrostacker.core
 
 /** Этап пайплайна для колбэка прогресса — :app привязывает его к UI. */
-enum class Stage { DETECT_STARS, REGISTER, STACK, BACKGROUND, STRETCH, NOISE_REDUCTION, DONE }
+enum class Stage { DETECT_STARS, REGISTER, STACK, GROUND, DONE }
 
 data class ProgressUpdate(val stage: Stage, val current: Int, val total: Int, val message: String = "")
 
@@ -12,29 +12,36 @@ data class PipelineConfig(
     val starDetector: StarDetectorConfig = StarDetectorConfig(),
     val registrator: FrameRegistratorConfig = FrameRegistratorConfig(),
     val combiner: StackCombinerConfig = StackCombinerConfig(),
-    val backgroundExtraction: BackgroundExtractor.Config = BackgroundExtractor.Config(),
-    val stretchTargetLevel: Double = 0.25,
-    val applyNoiseReduction: Boolean = true,
-    /** -1 = выбрать автоматически, см. [Pipeline.selectReferenceFrame]. */
+    val groundMask: GroundMask.Config = GroundMask.Config(),
+    /** Брать землю (всё, что не движется со звёздами) из опорного кадра. */
+    val freezeGround: Boolean = true,
+    /** -1 = первый по времени съёмки кадр, см. [Pipeline.selectReferenceFrame]. */
     val referenceFrameIndex: Int = -1
 )
 
 data class FrameOutcome(val index: Int, val accepted: Boolean, val registration: RegistrationResult?, val reason: String)
 
 data class PipelineResult(
+    /** Все кадры, совмещённые по звёздам и усреднённые (земля в нём размазана). */
     val stackedLinear: FloatImage,
+    /** Итог: небо из [stackedLinear], земля из опорного кадра (если [PipelineConfig.freezeGround]). */
     val finalImage: FloatImage,
+    /** Вес "земли" по пикселям (0 = небо, 1 = земля); null, если freezeGround выключен. */
+    val groundMask: GrayImage?,
     val frameOutcomes: List<FrameOutcome>,
     val referenceFrameIndex: Int
 )
 
 /**
- * Верхнеуровневый оркестратор: детекция звёзд → регистрация → стекинг →
- * удаление градиента → нейтрализация цвета → растяжка → (опционально)
- * шумоподавление. Без корутин/Android-зависимостей — см.
- * docs/ARCHITECTURE.md §2.1. Предполагается, что все входные кадры одного
- * разрешения (одна камера/объектив, без изменения зума между кадрами) —
- * стандартное условие для этого сценария съёмки.
+ * Простой пайплайн без "художественной" постобработки:
+ * 1. находим звёзды в каждом кадре;
+ * 2. совмещаем все кадры с опорным (первым) по звёздам — это и есть
+ *    компенсация вращения Земли;
+ * 3. усредняем совмещённые кадры (κ-σ отбраковка убирает спутники/самолёты);
+ * 4. землю (горы, деревья и т.п.) берём целиком из опорного кадра — она не
+ *    вращается вместе с небом и в стеке была бы размазана.
+ * Яркость, цвет и контраст не меняются — результат выглядит как исходный
+ * снимок, только с меньшим шумом в небе.
  */
 object Pipeline {
 
@@ -48,11 +55,14 @@ object Pipeline {
         val refIdx = if (config.referenceFrameIndex in frames.indices) config.referenceFrameIndex else selectReferenceFrame(frames)
 
         onProgress(ProgressUpdate(Stage.DETECT_STARS, 0, frames.size))
-        val starsPerFrame = frames.mapIndexed { i, f ->
-            val stars = StarDetector.detect(f.image.luminance(), config.starDetector)
+        // Ищем с запасом: часть найденного отсеется как неподвижные источники.
+        val detectConfig = config.starDetector.copy(maxStars = config.starDetector.maxStars * 2)
+        val rawStars = frames.mapIndexed { i, f ->
+            val stars = StarDetector.detect(f.image.luminance(), detectConfig)
             onProgress(ProgressUpdate(Stage.DETECT_STARS, i + 1, frames.size))
             stars
         }
+        val starsPerFrame = removeStaticSources(rawStars).map { it.take(config.starDetector.maxStars) }
 
         val referenceStars = starsPerFrame[refIdx]
         val outcomes = ArrayList<FrameOutcome>()
@@ -83,115 +93,115 @@ object Pipeline {
         require(stackFrames.size >= 2) { "Слишком мало кадров успешно зарегистрировано (нужно минимум 2)" }
 
         onProgress(ProgressUpdate(Stage.STACK, 0, 1))
-        val width = frames[refIdx].image.width
-        val height = frames[refIdx].image.height
+        val reference = frames[refIdx].image
+        val width = reference.width
+        val height = reference.height
         val stacked = TiledStacker.stack(width, height, stackFrames, config.combiner)
         onProgress(ProgressUpdate(Stage.STACK, 1, 1))
 
-        val finalImage = postProcess(stacked, config, onProgress)
-        return PipelineResult(stacked, finalImage, outcomes, refIdx)
+        if (!config.freezeGround) {
+            onProgress(ProgressUpdate(Stage.DONE, 1, 1))
+            return PipelineResult(stacked, stacked, null, outcomes, refIdx)
+        }
+
+        onProgress(ProgressUpdate(Stage.GROUND, 0, 1))
+        val staticStack = staticLuminanceMean(stackFrames.map { it.image }, width, height)
+        val mask = GroundMask.compute(reference.luminance(), stacked.luminance(), staticStack, config.groundMask)
+        val finalImage = blend(stacked, reference, mask)
+        onProgress(ProgressUpdate(Stage.GROUND, 1, 1))
+
+        onProgress(ProgressUpdate(Stage.DONE, 1, 1))
+        return PipelineResult(stacked, finalImage, mask, outcomes, refIdx)
     }
 
     /**
-     * Фон → нейтрализация цвета → растяжка → (опционально) шумоподавление,
-     * применяемые к уже готовому линейному стеку [stackedLinear]. Вынесено из
-     * [run] в отдельную публичную функцию, чтобы UI мог дёшево пересчитать
-     * только "художественную" часть (уровень растяжки, шумоподавление вкл/выкл)
-     * без повторной детекции звёзд/регистрации/стекинга кадров — это самая
-     * долгая часть пайплайна и она не зависит от этих параметров. Один и тот же
-     * код используется и здесь, и в [run] — см. docs/ARCHITECTURE.md §2.1.
+     * Убирает "звёзды", которые стоят на одном месте почти во всех кадрах:
+     * огни на земле, горячие пиксели, блики. Настоящие звёзды из-за вращения
+     * Земли смещаются, а неподвижные точки иначе "перетягивают" совмещение на
+     * себя (кадры совмещаются по земле, и звёзды размазываются). Если после
+     * фильтра звёзд почти не осталось (очень короткая серия - звёзды почти не
+     * сдвинулись), возвращаем исходные списки.
      */
-    fun postProcess(
-        stackedLinear: FloatImage,
-        config: PipelineConfig = PipelineConfig(),
-        onProgress: (ProgressUpdate) -> Unit = {}
-    ): FloatImage {
-        val width = stackedLinear.width
-        val height = stackedLinear.height
-
-        onProgress(ProgressUpdate(Stage.BACKGROUND, 0, 1))
-        // Звёзды детектируются заново на самом СТЕКЕ (у него лучше SNR, чем у
-        // любого отдельного кадра) — маска нужна, чтобы BackgroundExtractor не
-        // принял звёзды за часть градиента фона.
-        val starsForMask = StarDetector.detect(stackedLinear.luminance(), config.starDetector)
-        val starMaskArray = buildStarMask(width, height, starsForMask)
-        val bgConfig = config.backgroundExtraction.copy(starMask = { x, y -> starMaskArray[y * width + x] })
-
-        val (bgSubR, _) = BackgroundExtractor.extractAndSubtract(GrayImage(width, height, stackedLinear.r), bgConfig)
-        val (bgSubG, _) = BackgroundExtractor.extractAndSubtract(GrayImage(width, height, stackedLinear.g), bgConfig)
-        val (bgSubB, _) = BackgroundExtractor.extractAndSubtract(GrayImage(width, height, stackedLinear.b), bgConfig)
-        var processed = FloatImage(width, height, bgSubR.data, bgSubG.data, bgSubB.data)
-        processed = BackgroundNeutralizer.neutralize(processed)
-        onProgress(ProgressUpdate(Stage.BACKGROUND, 1, 1))
-
-        onProgress(ProgressUpdate(Stage.STRETCH, 0, 1))
-        // Фон после вычитания градиента колеблется около нуля (иногда чуть
-        // ниже) - это НЕ то же самое, что "реально тёмный, но положительный"
-        // фон линейного стека. Если отдать в autoMidtoneForBackground значение
-        // около нуля буквально, формула потребует m→0 и растянет шум фона так
-        // же сильно, как звёзды (см. MidtoneStretch.kt). Поэтому используем
-        // max(медиана, 2×σ шума фона) - ниже собственного шумового пола фон
-        // всё равно статистически неотличим от нуля, тянуть растяжку к этому
-        // уровню бессмысленно и вредно.
-        val bgPixelStats = Stats.sigmaClipped(sampleEveryNth(processed.luminance().data, 4))
-        val avgBg = kotlin.math.max(bgPixelStats.median, 2.0 * bgPixelStats.stdDev).coerceAtLeast(1e-4)
-        val m = MidtoneStretch.autoMidtoneForBackground(avgBg, config.stretchTargetLevel)
-        var finalImage = MidtoneStretch.stretchImage(processed, m)
-        onProgress(ProgressUpdate(Stage.STRETCH, 1, 1))
-
-        if (config.applyNoiseReduction) {
-            onProgress(ProgressUpdate(Stage.NOISE_REDUCTION, 0, 1))
-            finalImage = NoiseReducer.reduceChromaNoise(finalImage)
-            onProgress(ProgressUpdate(Stage.NOISE_REDUCTION, 1, 1))
+    fun removeStaticSources(
+        starsPerFrame: List<List<Star>>,
+        tolerancePx: Double = 1.5,
+        staticFraction: Double = 0.6,
+        minRemaining: Int = 15
+    ): List<List<Star>> {
+        val n = starsPerFrame.size
+        if (n < 3) return starsPerFrame
+        val cell = tolerancePx
+        val grids = starsPerFrame.map { stars ->
+            val grid = HashMap<Long, MutableList<Star>>()
+            for (s in stars) grid.getOrPut(cellKey(s.x, s.y, cell)) { ArrayList() }.add(s)
+            grid
         }
-
-        onProgress(ProgressUpdate(Stage.DONE, 1, 1))
-        return finalImage
-    }
-
-    /** Опорный кадр — ближайший по времени к середине серии (как Starry Landscape Stacker). */
-    fun selectReferenceFrame(frames: List<FrameInput>): Int {
-        var minT = Double.POSITIVE_INFINITY
-        var maxT = Double.NEGATIVE_INFINITY
-        var any = false
-        for (f in frames) {
-            val t = f.captureEpochSeconds ?: continue
-            any = true
-            if (t < minT) minT = t
-            if (t > maxT) maxT = t
-        }
-        if (!any) return frames.size / 2
-        val mid = (minT + maxT) / 2.0
-        var bestIdx = 0
-        var bestDist = Double.POSITIVE_INFINITY
-        for (i in frames.indices) {
-            val t = frames[i].captureEpochSeconds ?: continue
-            val dist = kotlin.math.abs(t - mid)
-            if (dist < bestDist) { bestDist = dist; bestIdx = i }
-        }
-        return bestIdx
-    }
-
-    private fun sampleEveryNth(data: FloatArray, stride: Int): List<Double> {
-        val values = ArrayList<Double>(data.size / stride + 1)
-        var i = 0
-        while (i < data.size) { values.add(data[i].toDouble()); i += stride }
-        return values
-    }
-
-    private fun buildStarMask(width: Int, height: Int, stars: List<Star>, radius: Int = 6): BooleanArray {
-        val mask = BooleanArray(width * height)
-        for (s in stars) {
-            val cx = s.x.toInt(); val cy = s.y.toInt()
-            for (dy in -radius..radius) {
-                for (dx in -radius..radius) {
-                    if (dx * dx + dy * dy > radius * radius) continue
-                    val xx = cx + dx; val yy = cy + dy
-                    if (xx < 0 || yy < 0 || xx >= width || yy >= height) continue
-                    mask[yy * width + xx] = true
+        val filtered = starsPerFrame.mapIndexed { i, stars ->
+            stars.filter { s ->
+                var hits = 0
+                for (j in 0 until n) {
+                    if (j != i && hasNeighbor(grids[j], s, cell, tolerancePx)) hits++
                 }
+                hits < staticFraction * (n - 1)
             }
         }
-        return mask
+        return if (filtered.all { it.size >= minRemaining }) filtered else starsPerFrame
+    }
+
+    private fun cellKey(x: Double, y: Double, cell: Double): Long =
+        (Math.floor(x / cell).toLong() shl 32) xor (Math.floor(y / cell).toLong() and 0xFFFFFFFFL)
+
+    private fun hasNeighbor(grid: Map<Long, List<Star>>, s: Star, cell: Double, tol: Double): Boolean {
+        val cx = Math.floor(s.x / cell).toLong()
+        val cy = Math.floor(s.y / cell).toLong()
+        for (dy in -1L..1L) for (dx in -1L..1L) {
+            val key = ((cx + dx) shl 32) xor ((cy + dy) and 0xFFFFFFFFL)
+            val list = grid[key] ?: continue
+            for (o in list) {
+                val ddx = o.x - s.x; val ddy = o.y - s.y
+                if (ddx * ddx + ddy * ddy <= tol * tol) return true
+            }
+        }
+        return false
+    }
+
+    /** sky*(1-w) + ground*w попиксельно по всем каналам. */
+    fun blend(sky: FloatImage, ground: FloatImage, groundWeight: GrayImage): FloatImage {
+        val n = sky.width * sky.height
+        val r = FloatArray(n); val g = FloatArray(n); val b = FloatArray(n)
+        val w = groundWeight.data
+        for (i in 0 until n) {
+            val k = w[i]
+            r[i] = sky.r[i] + (ground.r[i] - sky.r[i]) * k
+            g[i] = sky.g[i] + (ground.g[i] - sky.g[i]) * k
+            b[i] = sky.b[i] + (ground.b[i] - sky.b[i]) * k
+        }
+        return FloatImage(sky.width, sky.height, r, g, b)
+    }
+
+    /** Среднее по яркости БЕЗ совмещения — в нём неподвижная земля резкая, а звёзды размазаны. */
+    private fun staticLuminanceMean(images: List<FloatImage>, width: Int, height: Int): GrayImage {
+        val out = FloatArray(width * height)
+        for (img in images) {
+            for (i in out.indices) out[i] += 0.2126f * img.r[i] + 0.7152f * img.g[i] + 0.0722f * img.b[i]
+        }
+        val inv = 1f / images.size
+        for (i in out.indices) out[i] *= inv
+        return GrayImage(width, height, out)
+    }
+
+    /**
+     * Опорный кадр — самый ранний по времени съёмки (первый кадр серии): из
+     * него берётся земля, и к нему же приводятся звёзды. Без EXIF-времени —
+     * первый выбранный кадр.
+     */
+    fun selectReferenceFrame(frames: List<FrameInput>): Int {
+        var bestIdx = 0
+        var bestTime = Double.POSITIVE_INFINITY
+        for (i in frames.indices) {
+            val t = frames[i].captureEpochSeconds ?: continue
+            if (t < bestTime) { bestTime = t; bestIdx = i }
+        }
+        return bestIdx
     }
 }
