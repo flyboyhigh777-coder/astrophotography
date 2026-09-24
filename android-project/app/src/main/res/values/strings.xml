@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AstroStacker</string>
+
+    <!-- Экран выбора кадров -->
+    <string name="picker_title">Выбор кадров</string>
+    <string name="picker_instructions">Выберите серию снимков ночного неба, сделанных со штатива (камера не двигалась между кадрами). Нужно минимум 2 кадра, для заметного результата — от 10-15.</string>
+    <string name="picker_select_frames">Выбрать кадры</string>
+    <string name="picker_selected_count">Выбрано кадров: %1$d</string>
+    <string name="picker_select_dark_frames">Тёмные кадры (необязательно)</string>
+    <string name="picker_dark_frames_hint">Кадры с закрытым объективом, та же выдержка/ISO — помогают убрать горячие пиксели на длинных выдержках.</string>
+    <string name="picker_dark_selected_count">Выбрано тёмных кадров: %1$d</string>
+    <string name="picker_start_button">Обработать</string>
+    <string name="picker_min_frames_warning">Нужно выбрать хотя бы 2 кадра</string>
+
+    <!-- Экран обработки -->
+    <string name="processing_title">Обработка</string>
+    <string name="stage_detect_stars">Поиск звёзд</string>
+    <string name="stage_register">Совмещение кадров</string>
+    <string name="stage_stack">Склейка (стекинг)</string>
+    <string name="stage_background">Удаление градиента фона</string>
+    <string name="stage_stretch">Растяжка яркости</string>
+    <string name="stage_noise_reduction">Шумоподавление</string>
+    <string name="stage_done">Готово</string>
+    <string name="processing_step_progress">%1$d из %2$d</string>
+    <string name="processing_cancel">Отмена</string>
+
+    <!-- Экран результата -->
+    <string name="result_title">Результат</string>
+    <string name="result_frames_accepted">Успешно совмещено кадров: %1$d из %2$d</string>
+    <string name="result_frames_rejected_note">Часть кадров не удалось совместить (мало общих звёзд) — они не попали в склейку.</string>
+    <string name="result_stretch_label">Уровень растяжки фона</string>
+    <string name="result_noise_reduction_label">Шумоподавление (цвет)</string>
+    <string name="result_apply_button">Применить</string>
+    <string name="result_save_button">Сохранить в галерею</string>
+    <string name="result_save_success">Сохранено в галерею</string>
+    <string name="result_save_error">Не удалось сохранить файл</string>
+    <string name="result_start_over">Начать заново</string>
+
+    <!-- Ошибки -->
+    <string name="error_generic">Что-то пошло не так: %1$s</string>
+    <string name="error_decode_failed">Не удалось прочитать файл: %1$s</string>
+    <string name="error_too_few_frames">Слишком мало кадров успешно совмещено (нужно минимум 2). Проверьте, что кадры сняты одной серией с одинаковым кадрированием.</string>
+</resources>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      Системный Photo Picker (используется в FramePickerScreen через
+      PickMultipleVisualMedia) на Android 11+ не требует разрешений на доступ
+      к хранилищу вовсе. READ_EXTERNAL_STORAGE оставлен только как защитный
+      резерв для устройств API 28-29 (minSdk=28), где поведение компат-пикера
+      менее гарантировано - см. docs/ARCHITECTURE.md.
+    -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
+    <!--
+      Нужно для ExportRepository (сохранение результата в галерею) ТОЛЬКО на
+      Android 9 (API 28, наш minSdk) - там хранилище ещё не "scoped" на
+      уровне ОС, и запись в MediaStore.Images.Media требует явного разрешения.
+      С Android 10 (API 29+) действует паттерн IS_PENDING (см.
+      ExportRepository.kt), который не требует разрешений на хранилище вовсе -
+      maxSdkVersion="28" отражает именно эту границу.
+    -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <application
+        android:name=".AstroStackerApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AstroStacker">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:theme="@style/Theme.AstroStacker">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+</manifest>

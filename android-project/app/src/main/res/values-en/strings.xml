@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AstroStacker</string>
+
+    <string name="picker_title">Select frames</string>
+    <string name="picker_instructions">Pick a series of night-sky photos shot from a tripod (camera did not move between shots). At least 2 frames are required; for a visible improvement, 10-15 or more.</string>
+    <string name="picker_select_frames">Select frames</string>
+    <string name="picker_selected_count">Frames selected: %1$d</string>
+    <string name="picker_select_dark_frames">Dark frames (optional)</string>
+    <string name="picker_dark_frames_hint">Frames shot with the lens cap on, same shutter speed/ISO — used to remove hot pixels on long exposures.</string>
+    <string name="picker_dark_selected_count">Dark frames selected: %1$d</string>
+    <string name="picker_start_button">Process</string>
+    <string name="picker_min_frames_warning">Please select at least 2 frames</string>
+
+    <string name="processing_title">Processing</string>
+    <string name="stage_detect_stars">Detecting stars</string>
+    <string name="stage_register">Aligning frames</string>
+    <string name="stage_stack">Stacking</string>
+    <string name="stage_background">Removing background gradient</string>
+    <string name="stage_stretch">Stretching brightness</string>
+    <string name="stage_noise_reduction">Reducing noise</string>
+    <string name="stage_done">Done</string>
+    <string name="processing_step_progress">%1$d of %2$d</string>
+    <string name="processing_cancel">Cancel</string>
+
+    <string name="result_title">Result</string>
+    <string name="result_frames_accepted">Successfully aligned: %1$d of %2$d frames</string>
+    <string name="result_frames_rejected_note">Some frames could not be aligned (too few shared stars) and were left out of the stack.</string>
+    <string name="result_stretch_label">Background stretch level</string>
+    <string name="result_noise_reduction_label">Color noise reduction</string>
+    <string name="result_apply_button">Apply</string>
+    <string name="result_save_button">Save to gallery</string>
+    <string name="result_save_success">Saved to gallery</string>
+    <string name="result_save_error">Failed to save the file</string>
+    <string name="result_start_over">Start over</string>
+
+    <string name="error_generic">Something went wrong: %1$s</string>
+    <string name="error_decode_failed">Could not read file: %1$s</string>
+    <string name="error_too_few_frames">Too few frames were successfully aligned (need at least 2). Check that the frames are from the same series with matching framing.</string>
+</resources>
