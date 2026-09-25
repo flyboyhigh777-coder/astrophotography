@@ -34,6 +34,7 @@ fun AstroStackerRoot(viewModel: ProcessingViewModel) {
                 onDarkFramesSelected = viewModel::updateDarkFrames,
                 onBiasFramesSelected = viewModel::updateBiasFrames,
                 onFlatFramesSelected = viewModel::updateFlatFrames,
+                onGroundFramesSelected = viewModel::updateGroundFrames,
                 onStartProcessing = viewModel::startProcessing,
                 onDismissError = viewModel::dismissError
             )

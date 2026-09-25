@@ -44,6 +44,8 @@ sealed interface ScreenState {
         val darkFrames: List<Uri> = emptyList(),
         val biasFrames: List<Uri> = emptyList(),
         val flatFrames: List<Uri> = emptyList(),
+        /** Отдельные снимки земли с того же штатива (необязательно). */
+        val groundFrames: List<Uri> = emptyList(),
         val previousError: ErrorMessage? = null
     ) : ScreenState
 
@@ -57,7 +59,10 @@ sealed interface ScreenState {
         val edit: EditParams = EditParams(),
         val exportFormat: ExportFormat = ExportFormat.TIFF16,
         val saveState: SaveState = SaveState.Idle,
-        val calibrationUsed: List<CalibrationKind> = emptyList()
+        val calibrationUsed: List<CalibrationKind> = emptyList(),
+        /** Из скольких кадров сложена земля и были ли это отдельные снимки земли. */
+        val groundFramesUsed: Int = 0,
+        val groundFromSeparateFrames: Boolean = false
     ) : ScreenState
 
     /**
@@ -109,6 +114,7 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
     fun updateDarkFrames(uris: List<Uri>) = updatePicking { it.copy(darkFrames = uris) }
     fun updateBiasFrames(uris: List<Uri>) = updatePicking { it.copy(biasFrames = uris) }
     fun updateFlatFrames(uris: List<Uri>) = updatePicking { it.copy(flatFrames = uris) }
+    fun updateGroundFrames(uris: List<Uri>) = updatePicking { it.copy(groundFrames = uris) }
 
     private fun updatePicking(change: (ScreenState.Picking) -> ScreenState.Picking) {
         (_screenState.value as? ScreenState.Picking)?.let { _screenState.value = change(it) }
@@ -127,7 +133,7 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
             try {
                 val context = getApplication<Application>()
                 val calibrationTypes = listOf(picking.darkFrames, picking.biasFrames, picking.flatFrames).count { it.isNotEmpty() }
-                val budget = MemoryBudget.compute(totalFrames, extraFullFrames = calibrationTypes)
+                val budget = MemoryBudget.compute(totalFrames, extraFullFrames = calibrationTypes + picking.groundFrames.size)
 
                 // 1. Мастер-кадры: каждый тип усредняется по одному кадру, без
                 //    загрузки всей серии в память.
@@ -160,13 +166,22 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
                     _screenState.value = ScreenState.Processing(ProgressUpdate(Stage.LOAD, index + 1, totalFrames), totalFrames)
                 }
 
-                // 3. Совмещение по звёздам, стек, земля из первого кадра.
+                // 3. Отдельные снимки земли: та же калибровка, но без дарка
+                //    (у них может быть другая выдержка).
+                val groundImages = ArrayList<com.astrostacker.core.FloatImage>()
+                for (uri in picking.groundFrames) {
+                    val image = withContext(Dispatchers.IO) { ImageDecoding.decodeFrame(context, uri, budget.maxTotalPixels).image } ?: continue
+                    groundImages.add(withContext(Dispatchers.Default) { FrameCalibration.calibrate(image, masters, subtractDark = false) })
+                }
+
+                // 4. Совмещение по звёздам, стек неба, стек земли.
                 val result = withContext(Dispatchers.Default) {
-                    Pipeline.run(frameInputs, PipelineConfig()) { progress ->
+                    Pipeline.run(frameInputs, PipelineConfig(), groundImages) { progress ->
                         _screenState.value = ScreenState.Processing(progress, totalFrames)
                     }
                 }
                 frameInputs.clear()
+                groundImages.clear()
 
                 withContext(Dispatchers.Default) {
                     fullGroundFrozen = Rgb16Image.fromLinear(result.finalImage)
@@ -178,7 +193,9 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
                 _screenState.value = ScreenState.Result(
                     frameOutcomes = result.frameOutcomes,
                     previewBitmap = preview,
-                    calibrationUsed = used
+                    calibrationUsed = used,
+                    groundFramesUsed = result.groundFramesUsed,
+                    groundFromSeparateFrames = result.groundFromSeparateFrames
                 )
             } catch (e: CancellationException) {
                 throw e // отмену корутины нельзя "проглатывать" - см. cancelProcessing()

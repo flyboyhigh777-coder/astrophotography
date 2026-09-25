@@ -120,6 +120,16 @@ fun ResultScreen(
                 }
                 Switch(checked = state.freezeGround, onCheckedChange = onFreezeGroundChanged)
             }
+            if (state.freezeGround && state.groundFramesUsed > 0) {
+                Text(
+                    stringResource(
+                        if (state.groundFromSeparateFrames) R.string.result_ground_from_separate else R.string.result_ground_from_series,
+                        state.groundFramesUsed
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             Text(stringResource(R.string.result_format_label), style = MaterialTheme.typography.titleMedium)
             Row(

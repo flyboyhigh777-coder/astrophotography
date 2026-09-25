@@ -3,7 +3,7 @@
     <string name="app_name">AstroStacker</string>
 
     <string name="picker_title">Select frames</string>
-    <string name="picker_instructions">Pick a series of night-sky photos shot from a tripod (camera did not move between shots). Stars are aligned to the first frame, and the ground is taken from the first frame. At least 2 frames are required; for a visible improvement, 10-15 or more.</string>
+    <string name="picker_instructions">Pick a series of night-sky photos shot from a tripod (camera did not move between shots). Stars are aligned to the first frame; the ground (which does not move) is stacked separately, without alignment. At least 2 frames are required; for a visible improvement, 10-15 or more.</string>
     <string name="picker_select_frames">Select frames</string>
     <string name="picker_selected_count">Frames selected: %1$d</string>
     <string name="picker_start_button">Process</string>
@@ -13,7 +13,7 @@
     <string name="stage_detect_stars">Detecting stars</string>
     <string name="stage_register">Aligning frames</string>
     <string name="stage_stack">Stacking</string>
-    <string name="stage_ground">Ground from the first frame</string>
+    <string name="stage_ground">Finding the ground</string>
     <string name="stage_done">Done</string>
     <string name="processing_step_progress">%1$d of %2$d</string>
     <string name="processing_cancel">Cancel</string>
@@ -21,8 +21,8 @@
     <string name="result_title">Result</string>
     <string name="result_frames_accepted">Successfully aligned: %1$d of %2$d frames</string>
     <string name="result_frames_rejected_note">Some frames could not be aligned (too few shared stars) and were left out of the stack.</string>
-    <string name="result_freeze_ground_label">Ground from the first frame</string>
-    <string name="result_freeze_ground_hint">Mountains, trees and other objects come from the first shot; the sky comes from all frames aligned on the stars.</string>
+    <string name="result_freeze_ground_label">Ground as a separate stack</string>
+    <string name="result_freeze_ground_hint">Mountains, trees and other objects are stacked separately (they do not move); the sky comes from all frames aligned on the stars.</string>
     <string name="result_save_success">Saved to Pictures/AstroStacker (TIFF goes to Download/AstroStacker if the gallery does not accept it)</string>
     <string name="result_save_error">Failed to save the file</string>
     <string name="result_start_over">Start over</string>
@@ -64,4 +64,8 @@
     <string name="result_save_button">Save (%1$s)</string>
     <string name="result_saving">Saving…</string>
     <string name="format_tiff16">TIFF 16-bit</string>
+    <string name="picker_ground_title">Ground frames (optional)</string>
+    <string name="picker_ground_hint">Landscape shots from the same tripod without moving the camera, e.g. with a longer exposure or lower ISO for a clean foreground. If none are selected, the ground is stacked from the first 5 frames of the series.</string>
+    <string name="result_ground_from_series">Ground: stack of %1$d series frames, not aligned on stars</string>
+    <string name="result_ground_from_separate">Ground: stack of %1$d separate ground shots</string>
 </resources>

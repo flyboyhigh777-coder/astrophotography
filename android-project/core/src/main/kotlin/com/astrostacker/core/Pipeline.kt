@@ -14,8 +14,15 @@ data class PipelineConfig(
     val registrator: FrameRegistratorConfig = FrameRegistratorConfig(),
     val combiner: StackCombinerConfig = StackCombinerConfig(),
     val groundMask: GroundMask.Config = GroundMask.Config(),
-    /** Брать землю (всё, что не движется со звёздами) из опорного кадра. */
+    /** Землю (всё, что не движется со звёздами) не совмещать по звёздам, а брать отдельным стеком. */
     val freezeGround: Boolean = true,
+    /**
+     * Сколько первых по времени кадров серии усреднить для земли (без
+     * совмещения - земля неподвижна). Не все: за время серии меняется
+     * освещение (луна, фары, облака). Игнорируется, если переданы отдельные
+     * кадры земли.
+     */
+    val groundFrameCount: Int = 5,
     /** -1 = первый по времени съёмки кадр, см. [Pipeline.selectReferenceFrame]. */
     val referenceFrameIndex: Int = -1
 )
@@ -25,10 +32,14 @@ data class FrameOutcome(val index: Int, val accepted: Boolean, val registration:
 data class PipelineResult(
     /** Все кадры, совмещённые по звёздам и усреднённые (земля в нём размазана). */
     val stackedLinear: FloatImage,
-    /** Итог: небо из [stackedLinear], земля из опорного кадра (если [PipelineConfig.freezeGround]). */
+    /** Итог: небо из [stackedLinear], земля из [groundStack] (если [PipelineConfig.freezeGround]). */
     val finalImage: FloatImage,
     /** Вес "земли" по пикселям (0 = небо, 1 = земля); null, если freezeGround выключен. */
     val groundMask: GrayImage?,
+    /** Сколько кадров вошло в стек земли (0, если freezeGround выключен). */
+    val groundFramesUsed: Int,
+    /** true - земля сложена из отдельных снимков земли, false - из кадров серии. */
+    val groundFromSeparateFrames: Boolean,
     val frameOutcomes: List<FrameOutcome>,
     val referenceFrameIndex: Int
 )
@@ -46,9 +57,16 @@ data class PipelineResult(
  */
 object Pipeline {
 
+    /**
+     * [groundFrames] - необязательные отдельные снимки земли с того же штатива
+     * (например, с длинной выдержкой или низким ISO). Если заданы и совпадают
+     * по размеру с серией, земля складывается из них; иначе - из первых
+     * [PipelineConfig.groundFrameCount] кадров серии.
+     */
     fun run(
         frames: List<FrameInput>,
         config: PipelineConfig = PipelineConfig(),
+        groundFrames: List<FloatImage> = emptyList(),
         onProgress: (ProgressUpdate) -> Unit = {}
     ): PipelineResult {
         require(frames.size >= 2) { "Нужно минимум 2 кадра" }
@@ -117,9 +135,28 @@ object Pipeline {
         onProgress(ProgressUpdate(Stage.STACK, 1, 1))
 
         // 3. Небо из стека, земля из опорного кадра.
-        val finalImage = if (mask != null) blend(stacks.skyOnly!!, reference, mask) else stacks.all
+        // 3. Земля: отдельный стек БЕЗ совмещения (камера на штативе неподвижна).
+        var groundUsed = 0
+        var groundSeparate = false
+        val finalImage = if (mask != null) {
+            val (sources, separate) = groundSources(frames, refIdx, groundFrames, config.groundFrameCount)
+            groundUsed = sources.size
+            groundSeparate = separate
+            val ground = if (sources.size == 1) sources[0]
+            else SkyStacker.stack(sources.map { StackFrame(it, SimilarityTransform.IDENTITY) }, reference, null, config.combiner).all
+            blend(stacks.skyOnly!!, ground, mask)
+        } else stacks.all
         onProgress(ProgressUpdate(Stage.DONE, 1, 1))
-        return PipelineResult(stacks.all, finalImage, mask, outcomes, refIdx)
+        return PipelineResult(stacks.all, finalImage, mask, groundUsed, groundSeparate, outcomes, refIdx)
+    }
+
+    /** Кадры для стека земли: отдельные снимки земли, если подходят по размеру, иначе первые по времени кадры серии (начиная с опорного). */
+    private fun groundSources(frames: List<FrameInput>, refIdx: Int, groundFrames: List<FloatImage>, count: Int): Pair<List<FloatImage>, Boolean> {
+        val ref = frames[refIdx].image
+        val separate = groundFrames.filter { it.width == ref.width && it.height == ref.height }
+        if (separate.isNotEmpty()) return separate to true
+        val byTime = frames.indices.sortedWith(compareBy<Int> { it != refIdx }.thenBy { frames[it].captureEpochSeconds ?: it.toDouble() })
+        return byTime.take(count.coerceAtLeast(1)).map { frames[it].image } to false
     }
 
     /** Наибольшее смещение точки кадра после совмещения (по сетке 3×3 точек). */

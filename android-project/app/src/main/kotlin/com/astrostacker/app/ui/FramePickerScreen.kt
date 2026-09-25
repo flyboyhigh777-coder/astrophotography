@@ -44,6 +44,7 @@ fun FramePickerScreen(
     onDarkFramesSelected: (List<Uri>) -> Unit,
     onBiasFramesSelected: (List<Uri>) -> Unit,
     onFlatFramesSelected: (List<Uri>) -> Unit,
+    onGroundFramesSelected: (List<Uri>) -> Unit,
     onStartProcessing: () -> Unit,
     onDismissError: () -> Unit
 ) {
@@ -83,6 +84,13 @@ fun FramePickerScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+
+            CalibrationPicker(
+                title = stringResource(R.string.picker_ground_title),
+                hint = stringResource(R.string.picker_ground_hint),
+                count = state.groundFrames.size,
+                onSelected = onGroundFramesSelected
+            )
 
             Spacer(Modifier.height(4.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outline)

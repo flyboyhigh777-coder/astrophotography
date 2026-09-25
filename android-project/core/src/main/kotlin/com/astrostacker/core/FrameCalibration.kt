@@ -88,10 +88,15 @@ object FrameCalibration {
      * размера (снято в другом разрешении) молча пропускаются, а не ломают
      * обработку.
      */
-    fun calibrate(light: FloatImage, masters: Masters): FloatImage {
+    /**
+     * [subtractDark] = false - для кадров с другой выдержкой (например,
+     * отдельные снимки земли): дарк от основной серии к ним не подходит,
+     * вычитается только биас, остаются флэт и исправление горячих пикселей.
+     */
+    fun calibrate(light: FloatImage, masters: Masters, subtractDark: Boolean = true): FloatImage {
         if (masters.isEmpty) return light
         val offset = when {
-            masters.dark != null && sameSize(light, masters.dark) -> masters.dark
+            subtractDark && masters.dark != null && sameSize(light, masters.dark) -> masters.dark
             masters.bias != null && sameSize(light, masters.bias) -> masters.bias
             else -> null
         }

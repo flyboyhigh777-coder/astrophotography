@@ -67,14 +67,15 @@ class GroundMaskTest {
         val mask = result.groundMask!!
         assertTrue("опорным должен быть первый кадр", result.referenceFrameIndex == 0)
 
-        var groundPixels = 0; var groundHits = 0; var groundErr = 0.0
+        var groundPixels = 0; var groundHits = 0; var groundErr = 0.0; var singleErr = 0.0
         var skyPixels = 0; var skyHits = 0
         for (y in 0 until height) for (x in 0 until width) {
             val i = y * width + x
             if (y > horizonY(x) + 12) {
                 groundPixels++
                 if (mask.data[i] > 0.9f) groundHits++
-                groundErr += abs(result.finalImage.r[i] - frames[0].image.r[i])
+                groundErr += abs(result.finalImage.r[i] - groundTexture[i])
+                singleErr += abs(frames[0].image.r[i] - groundTexture[i])
             } else if (y < 60) {
                 skyPixels++
                 if (mask.data[i] < 0.1f) skyHits++
@@ -82,7 +83,11 @@ class GroundMaskTest {
         }
         assertTrue("земля распознана только в $groundHits из $groundPixels пикселей", groundHits >= groundPixels * 0.95)
         assertTrue("небо ошибочно отмечено землёй: ${skyPixels - skyHits} из $skyPixels", skyHits >= skyPixels * 0.95)
-        assertTrue("земля в итоге отличается от первого кадра: ${groundErr / groundPixels}", groundErr / groundPixels < 0.01)
+        // Земля - стек первых 5 кадров без совмещения: резкая (совпадает с
+        // неподвижной текстурой) и менее шумная, чем один кадр.
+        assertTrue("земля из 5 кадров вошла не вся: ${result.groundFramesUsed}", result.groundFramesUsed == 5)
+        assertTrue("земля не стала чище одного кадра: ${groundErr / groundPixels} vs ${singleErr / groundPixels}",
+            groundErr < singleErr * 0.7)
 
         // Небо стало менее шумным, чем в одном кадре.
         val skyFinal = ArrayList<Double>(); val skySingle = ArrayList<Double>()
@@ -93,6 +98,24 @@ class GroundMaskTest {
         val finalSd = Stats.sigmaClipped(skyFinal).stdDev
         val singleSd = Stats.sigmaClipped(skySingle).stdDev
         assertTrue("шум неба не уменьшился: $finalSd vs $singleSd", finalSd < singleSd * 0.6)
+    }
+
+    @Test
+    fun separateGroundFramesAreUsedForGround() {
+        val frames = buildFrames()
+        // "Длинная выдержка": та же земля, но ярче на 0.1 и почти без шума.
+        val groundShots = (0 until 4).map { k ->
+            val rnd = Random(900L + k)
+            val d = FloatArray(width * height) { (groundTexture[it] + 0.1f + (rnd.nextGaussian() * 0.002).toFloat()).coerceIn(0f, 1f) }
+            FloatImage(width, height, d, d.copyOf(), d.copyOf())
+        }
+        val result = Pipeline.run(frames, groundFrames = groundShots)
+        assertTrue(result.groundFramesUsed == 4 && result.groundFromSeparateFrames)
+        var sum = 0.0; var n = 0
+        for (y in 0 until height) for (x in 0 until width) {
+            if (y > horizonY(x) + 12) { sum += result.finalImage.r[y * width + x] - groundTexture[y * width + x]; n++ }
+        }
+        assertTrue("земля взята не из отдельных кадров: сдвиг ${sum / n}", abs(sum / n - 0.1) < 0.01)
     }
 
     @Test

@@ -182,6 +182,8 @@ class AppFlowTest {
             vm.updateFlatFrames(flats)
         }
         shot("02_picker_selected")
+        compose.onNodeWithText("Кадры земли (необязательно)").performScrollTo()
+        shot("03a_picker_ground")
         compose.onNodeWithText("Флэты").performScrollTo()
         shot("03_picker_calibration")
 
@@ -192,9 +194,11 @@ class AppFlowTest {
         println("APPFLOW processing ms=${System.currentTimeMillis() - started} accepted=${result.frameOutcomes.count { it.accepted }}/${result.frameOutcomes.size} calibration=${result.calibrationUsed}")
         assertEquals("все кадры должны совместиться", lights.size, result.frameOutcomes.count { it.accepted })
         assertEquals(listOf(CalibrationKind.DARK, CalibrationKind.FLAT), result.calibrationUsed)
+        assertEquals("земля - стек первых 5 кадров", 5, result.groundFramesUsed)
+        assertTrue(!result.groundFromSeparateFrames)
         shot("04_result")
         compose.onNodeWithText("Сохранить (TIFF 16 бит)").assertExists()
-        compose.onNodeWithText("Формат файла").performScrollTo()
+        compose.onNodeWithText("Земля: стек из 5 кадров серии, без совмещения по звёздам").performScrollTo()
         shot("05_result_controls")
 
         compose.onNodeWithText("Повернуть и обрезать").performScrollTo().performClick()
