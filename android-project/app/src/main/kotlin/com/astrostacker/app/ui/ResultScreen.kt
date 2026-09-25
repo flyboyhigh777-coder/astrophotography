@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,26 +26,30 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.astrostacker.app.CalibrationKind
 import com.astrostacker.app.R
 import com.astrostacker.app.SaveState
 import com.astrostacker.app.ScreenState
+import com.astrostacker.app.data.ExportFormat
 
 /**
- * Экран результата: итоговый снимок без какой-либо постобработки, переключатель
- * "земля из первого кадра" (мгновенно, оба варианта уже посчитаны) и сохранение
- * в галерею того варианта, который сейчас на экране.
+ * Экран результата: итоговый снимок без "художественной" постобработки,
+ * переключатель "земля из первого кадра", "Повернуть и обрезать", выбор
+ * формата и сохранение того варианта, который сейчас на экране.
  */
 @Composable
 fun ResultScreen(
     state: ScreenState.Result,
     onFreezeGroundChanged: (Boolean) -> Unit,
+    onEdit: () -> Unit,
+    onFormatChanged: (ExportFormat) -> Unit,
     onSave: () -> Unit,
     onReset: () -> Unit
 ) {
     val acceptedCount = state.frameOutcomes.count { it.accepted }
     val totalCount = state.frameOutcomes.size
     val hasRejected = acceptedCount < totalCount
-    val shown = state.shownBitmap
+    val shown = state.previewBitmap
     val imageBitmap = remember(shown) { shown.asImageBitmap() }
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -81,6 +86,25 @@ fun ResultScreen(
                 )
             }
 
+            if (state.calibrationUsed.isNotEmpty()) {
+                val names = state.calibrationUsed.map {
+                    when (it) {
+                        CalibrationKind.DARK -> stringResource(R.string.picker_darks_title)
+                        CalibrationKind.BIAS -> stringResource(R.string.picker_bias_title)
+                        CalibrationKind.FLAT -> stringResource(R.string.picker_flats_title)
+                    }
+                }
+                Text(
+                    stringResource(R.string.result_calibration_used, names.joinToString(", ")),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.result_edit_button))
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -96,6 +120,32 @@ fun ResultScreen(
                 }
                 Switch(checked = state.freezeGround, onCheckedChange = onFreezeGroundChanged)
             }
+
+            Text(stringResource(R.string.result_format_label), style = MaterialTheme.typography.titleMedium)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState())
+            ) {
+                for (format in ExportFormat.values()) {
+                    val label = formatLabel(format)
+                    if (format == state.exportFormat) {
+                        Button(onClick = { onFormatChanged(format) }) { Text(label) }
+                    } else {
+                        OutlinedButton(onClick = { onFormatChanged(format) }) { Text(label) }
+                    }
+                }
+            }
+            Text(
+                stringResource(
+                    when (state.exportFormat) {
+                        ExportFormat.TIFF16 -> R.string.result_format_tiff_hint
+                        ExportFormat.PNG -> R.string.result_format_png_hint
+                        ExportFormat.JPEG -> R.string.result_format_jpeg_hint
+                    }
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             when (state.saveState) {
                 SaveState.Success -> Text(
@@ -118,11 +168,21 @@ fun ResultScreen(
                 enabled = state.saveState != SaveState.Saving,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(stringResource(R.string.result_save_button))
+                Text(
+                    if (state.saveState == SaveState.Saving) stringResource(R.string.result_saving)
+                    else stringResource(R.string.result_save_button, formatLabel(state.exportFormat))
+                )
             }
             OutlinedButton(onClick = onReset, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.result_start_over))
             }
         }
     }
+}
+
+@Composable
+private fun formatLabel(format: ExportFormat): String = when (format) {
+    ExportFormat.TIFF16 -> stringResource(R.string.format_tiff16)
+    ExportFormat.PNG -> "PNG"
+    ExportFormat.JPEG -> "JPEG"
 }

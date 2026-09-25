@@ -5,15 +5,19 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.astrostacker.app.data.ExportFormat
 import com.astrostacker.app.data.ExportRepository
 import com.astrostacker.app.data.ImageDecoding
 import com.astrostacker.app.data.MemoryBudget
-import com.astrostacker.core.DarkFrameCalibrator
+import com.astrostacker.core.CropRect
+import com.astrostacker.core.EditParams
+import com.astrostacker.core.FrameCalibration
 import com.astrostacker.core.FrameInput
 import com.astrostacker.core.FrameOutcome
 import com.astrostacker.core.Pipeline
 import com.astrostacker.core.PipelineConfig
 import com.astrostacker.core.ProgressUpdate
+import com.astrostacker.core.Rgb16Image
 import com.astrostacker.core.Stage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +28,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Рекомендуемый максимум кадров в одной серии - см. подсказку на экране выбора. */
+const val RECOMMENDED_MAX_FRAMES = 30
+
 /**
  * Состояния экрана - единственный источник истины для навигации: вместо
  * Navigation-Compose (см. docs/ARCHITECTURE.md §2.2) `AstroStackerRoot` просто
@@ -31,30 +38,44 @@ import kotlinx.coroutines.withContext
  */
 sealed interface ScreenState {
 
-    /** Выбор кадров (первый экран). [previousError], если есть - что пошло не так в прошлый раз, для показа плашки на этом же экране. */
+    /** Выбор кадров (первый экран). [previousError], если есть - что пошло не так в прошлый раз. */
     data class Picking(
         val lightFrames: List<Uri> = emptyList(),
         val darkFrames: List<Uri> = emptyList(),
+        val biasFrames: List<Uri> = emptyList(),
+        val flatFrames: List<Uri> = emptyList(),
         val previousError: ErrorMessage? = null
     ) : ScreenState
 
     data class Processing(val progress: ProgressUpdate, val totalFrames: Int) : ScreenState
 
-    /**
-     * Оба варианта результата посчитаны заранее, переключатель на экране
-     * мгновенный: [groundFrozenBitmap] - небо из стека + земля из первого
-     * кадра, [skyOnlyBitmap] - просто все кадры, совмещённые по звёздам.
-     */
+    /** [previewBitmap] - уменьшенный результат (выбранный вариант, с поворотом и обрезкой). */
     data class Result(
         val frameOutcomes: List<FrameOutcome>,
-        val groundFrozenBitmap: Bitmap,
-        val skyOnlyBitmap: Bitmap,
+        val previewBitmap: Bitmap,
         val freezeGround: Boolean = true,
-        val saveState: SaveState = SaveState.Idle
-    ) : ScreenState {
-        val shownBitmap: Bitmap get() = if (freezeGround) groundFrozenBitmap else skyOnlyBitmap
-    }
+        val edit: EditParams = EditParams(),
+        val exportFormat: ExportFormat = ExportFormat.TIFF16,
+        val saveState: SaveState = SaveState.Idle,
+        val calibrationUsed: List<CalibrationKind> = emptyList()
+    ) : ScreenState
+
+    /**
+     * Экран "Повернуть и обрезать". [baseBitmap] - превью уже повёрнутое на
+     * `draft.quarterTurns`; выравнивание горизонта показывается поверх
+     * (graphicsLayer), обрезка - рамкой, до нажатия "Применить" ничего не
+     * пересчитывается. [aspectRatio] - зафиксированные пропорции рамки или null.
+     */
+    data class Editing(
+        val result: Result,
+        val baseBitmap: Bitmap,
+        val draft: EditParams,
+        val aspectRatio: Float? = null,
+        val cropIsAuto: Boolean = true
+    ) : ScreenState
 }
+
+enum class CalibrationKind { DARK, BIAS, FLAT }
 
 enum class SaveState { Idle, Saving, Success, Failed }
 
@@ -65,9 +86,9 @@ sealed interface ErrorMessage {
 }
 
 /**
- * Оркестрация: вызывает `:core` `Pipeline.run` на
- * `Dispatchers.Default`, публикует прогресс и результат через [StateFlow].
- * Без WorkManager - см. обоснование в docs/ARCHITECTURE.md §2.2.
+ * Оркестрация: чтение и калибровка кадров, `:core` `Pipeline.run` на
+ * `Dispatchers.Default`, хранение результата в 16 битах, поворот/обрезка и
+ * сохранение. Прогресс и результат публикуются через [StateFlow].
  */
 class ProcessingViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -76,12 +97,21 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
 
     private var processingJob: Job? = null
 
-    fun updateLightFrames(uris: List<Uri>) {
-        (_screenState.value as? ScreenState.Picking)?.let { _screenState.value = it.copy(lightFrames = uris) }
-    }
+    // Полноразмерные результаты (16 бит) и их уменьшенные копии для экрана.
+    // Хранятся здесь, а не в ScreenState: это десятки мегабайт, в состоянии
+    // экрана достаточно готового Bitmap превью.
+    private var fullGroundFrozen: Rgb16Image? = null
+    private var fullSkyOnly: Rgb16Image? = null
+    private var previewGroundFrozen: Rgb16Image? = null
+    private var previewSkyOnly: Rgb16Image? = null
 
-    fun updateDarkFrames(uris: List<Uri>) {
-        (_screenState.value as? ScreenState.Picking)?.let { _screenState.value = it.copy(darkFrames = uris) }
+    fun updateLightFrames(uris: List<Uri>) = updatePicking { it.copy(lightFrames = uris) }
+    fun updateDarkFrames(uris: List<Uri>) = updatePicking { it.copy(darkFrames = uris) }
+    fun updateBiasFrames(uris: List<Uri>) = updatePicking { it.copy(biasFrames = uris) }
+    fun updateFlatFrames(uris: List<Uri>) = updatePicking { it.copy(flatFrames = uris) }
+
+    private fun updatePicking(change: (ScreenState.Picking) -> ScreenState.Picking) {
+        (_screenState.value as? ScreenState.Picking)?.let { _screenState.value = change(it) }
     }
 
     fun startProcessing() {
@@ -93,59 +123,70 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
 
         val totalFrames = picking.lightFrames.size
         processingJob = viewModelScope.launch {
-            _screenState.value = ScreenState.Processing(ProgressUpdate(Stage.DETECT_STARS, 0, totalFrames), totalFrames)
+            _screenState.value = ScreenState.Processing(ProgressUpdate(Stage.LOAD, 0, totalFrames), totalFrames)
             try {
                 val context = getApplication<Application>()
-                val budget = MemoryBudget.compute(totalFrames)
+                val calibrationTypes = listOf(picking.darkFrames, picking.biasFrames, picking.flatFrames).count { it.isNotEmpty() }
+                val budget = MemoryBudget.compute(totalFrames, extraFullFrames = calibrationTypes)
 
-                val decodedLight = withContext(Dispatchers.IO) {
-                    picking.lightFrames.map { uri -> ImageDecoding.decodeFrame(context, uri, budget.maxTotalPixels) }
-                }
-                val failedFrame = decodedLight.firstOrNull { it.image == null }
-                if (failedFrame != null) {
-                    _screenState.value = picking.copy(previousError = ErrorMessage.DecodeFailed(failedFrame.displayName))
-                    return@launch
-                }
-
-                var frameInputs = decodedLight.map { FrameInput(it.image!!, it.captureEpochSeconds) }
-
-                if (picking.darkFrames.isNotEmpty()) {
-                    val darkImages = withContext(Dispatchers.IO) {
-                        picking.darkFrames.mapNotNull { uri -> ImageDecoding.decodeFrame(context, uri, budget.maxTotalPixels).image }
+                // 1. Мастер-кадры: каждый тип усредняется по одному кадру, без
+                //    загрузки всей серии в память.
+                val (masters, used) = withContext(Dispatchers.Default) {
+                    fun master(uris: List<Uri>) = if (uris.isEmpty()) null else FrameCalibration.MasterAccumulator().also { acc ->
+                        for (uri in uris) ImageDecoding.decodeFrame(context, uri, budget.maxTotalPixels).image?.let { acc.add(it) }
+                    }.mean()
+                    val dark = master(picking.darkFrames)
+                    val bias = master(picking.biasFrames)
+                    val flat = master(picking.flatFrames)
+                    val usedKinds = buildList {
+                        if (dark != null) add(CalibrationKind.DARK)
+                        if (bias != null) add(CalibrationKind.BIAS)
+                        if (flat != null) add(CalibrationKind.FLAT)
                     }
-                    if (darkImages.isNotEmpty()) {
-                        frameInputs = withContext(Dispatchers.Default) {
-                            val hotPixelMask = DarkFrameCalibrator.buildHotPixelMask(darkImages.map { it.luminance() })
-                            frameInputs.map { it.copy(image = DarkFrameCalibrator.applyCalibration(it.image, hotPixelMask)) }
-                        }
-                    }
-                    // Если ни один тёмный кадр не декодировался - молча
-                    // продолжаем БЕЗ калибровки, а не падаем: калибровка по
-                    // тёмным кадрам необязательна (см. DarkFrameCalibrator в
-                    // :core), тогда как отсутствие светлых кадров - фатально.
+                    FrameCalibration.buildMasters(dark, bias, flat) to usedKinds
                 }
 
+                // 2. Световые кадры: чтение + калибровка сразу, по одному.
+                val frameInputs = ArrayList<FrameInput>(totalFrames)
+                for ((index, uri) in picking.lightFrames.withIndex()) {
+                    val decoded = withContext(Dispatchers.IO) { ImageDecoding.decodeFrame(context, uri, budget.maxTotalPixels) }
+                    val image = decoded.image
+                    if (image == null) {
+                        _screenState.value = picking.copy(previousError = ErrorMessage.DecodeFailed(decoded.displayName))
+                        return@launch
+                    }
+                    val calibrated = withContext(Dispatchers.Default) { FrameCalibration.calibrate(image, masters) }
+                    frameInputs.add(FrameInput(calibrated, decoded.captureEpochSeconds))
+                    _screenState.value = ScreenState.Processing(ProgressUpdate(Stage.LOAD, index + 1, totalFrames), totalFrames)
+                }
+
+                // 3. Совмещение по звёздам, стек, земля из первого кадра.
                 val result = withContext(Dispatchers.Default) {
                     Pipeline.run(frameInputs, PipelineConfig()) { progress ->
                         _screenState.value = ScreenState.Processing(progress, totalFrames)
                     }
                 }
+                frameInputs.clear()
 
-                val (frozen, skyOnly) = withContext(Dispatchers.Default) {
-                    ImageDecoding.floatImageToBitmap(result.finalImage) to
-                        ImageDecoding.floatImageToBitmap(result.stackedLinear)
+                withContext(Dispatchers.Default) {
+                    fullGroundFrozen = Rgb16Image.fromLinear(result.finalImage)
+                    fullSkyOnly = Rgb16Image.fromLinear(result.stackedLinear)
+                    previewGroundFrozen = fullGroundFrozen!!.downscale(PREVIEW_MAX_SIDE)
+                    previewSkyOnly = fullSkyOnly!!.downscale(PREVIEW_MAX_SIDE)
                 }
+                val preview = withContext(Dispatchers.Default) { renderPreview(freezeGround = true, edit = EditParams()) }
                 _screenState.value = ScreenState.Result(
                     frameOutcomes = result.frameOutcomes,
-                    groundFrozenBitmap = frozen,
-                    skyOnlyBitmap = skyOnly
+                    previewBitmap = preview,
+                    calibrationUsed = used
                 )
             } catch (e: CancellationException) {
                 throw e // отмену корутины нельзя "проглатывать" - см. cancelProcessing()
+            } catch (e: OutOfMemoryError) {
+                releaseResults()
+                _screenState.value = picking.copy(previousError = ErrorMessage.Generic("не хватило памяти - выберите меньше кадров"))
             } catch (e: IllegalArgumentException) {
-                // Pipeline.run падает с require() именно с таким текстом при
-                // нехватке успешно зарегистрированных кадров - отдельная,
-                // осмысленная пользователю ошибка, а не общая "что-то пошло не так".
+                // Pipeline.run падает с require() при нехватке успешно совмещённых кадров.
                 val message = e.message.orEmpty()
                 _screenState.value = if (message.contains("зарегистрировано", ignoreCase = true) ||
                     message.contains("минимум", ignoreCase = true)
@@ -167,27 +208,156 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
 
     fun setFreezeGround(enabled: Boolean) {
         val current = _screenState.value as? ScreenState.Result ?: return
-        _screenState.value = current.copy(freezeGround = enabled, saveState = SaveState.Idle)
+        viewModelScope.launch {
+            val preview = withContext(Dispatchers.Default) { renderPreview(enabled, current.edit) }
+            _screenState.value = current.copy(freezeGround = enabled, previewBitmap = preview, saveState = SaveState.Idle)
+        }
     }
+
+    fun setExportFormat(format: ExportFormat) {
+        val current = _screenState.value as? ScreenState.Result ?: return
+        _screenState.value = current.copy(exportFormat = format, saveState = SaveState.Idle)
+    }
+
+    // ---------- Повернуть и обрезать ----------
+
+    fun openEditor() {
+        val current = _screenState.value as? ScreenState.Result ?: return
+        viewModelScope.launch {
+            val base = withContext(Dispatchers.Default) { renderEditorBase(current.freezeGround, current.edit.quarterTurns) }
+            _screenState.value = ScreenState.Editing(
+                result = current,
+                baseBitmap = base,
+                draft = current.edit,
+                cropIsAuto = current.edit.crop == autoCrop(base, current.edit.straightenDegrees)
+            )
+        }
+    }
+
+    fun editorRotateQuarter(delta: Int) {
+        val editing = _screenState.value as? ScreenState.Editing ?: return
+        val turns = ((editing.draft.quarterTurns + delta) % 4 + 4) % 4
+        viewModelScope.launch {
+            val base = withContext(Dispatchers.Default) { renderEditorBase(editing.result.freezeGround, turns) }
+            // Рамка задана в долях от повёрнутого кадра - после поворота на 90° сбрасываем её.
+            val draft = EditParams(quarterTurns = turns, straightenDegrees = editing.draft.straightenDegrees)
+            _screenState.value = editing.copy(
+                baseBitmap = base,
+                draft = draft.copy(crop = autoCrop(base, draft.straightenDegrees)),
+                aspectRatio = null,
+                cropIsAuto = true
+            )
+        }
+    }
+
+    fun editorStraighten(degrees: Float) {
+        val editing = _screenState.value as? ScreenState.Editing ?: return
+        val inscribed = autoCrop(editing.baseBitmap, degrees)
+        val crop = when {
+            editing.aspectRatio != null -> fitAspect(editing.baseBitmap, editing.aspectRatio, inscribed)
+            editing.cropIsAuto -> inscribed
+            else -> editing.draft.crop.intersect(inscribed)
+        }
+        _screenState.value = editing.copy(draft = editing.draft.copy(straightenDegrees = degrees, crop = crop))
+    }
+
+    fun editorSetCrop(crop: CropRect) {
+        val editing = _screenState.value as? ScreenState.Editing ?: return
+        _screenState.value = editing.copy(draft = editing.draft.copy(crop = crop.normalized()), cropIsAuto = false)
+    }
+
+    /** [ratio] = ширина/высота рамки; null - свободная рамка; 0 - пропорции исходного кадра. */
+    fun editorSetAspect(ratio: Float?) {
+        val editing = _screenState.value as? ScreenState.Editing ?: return
+        val base = editing.baseBitmap
+        val resolved = if (ratio == 0f) base.width.toFloat() / base.height else ratio
+        val inscribed = autoCrop(base, editing.draft.straightenDegrees)
+        val crop = if (resolved == null) editing.draft.crop else fitAspect(base, resolved, inscribed)
+        _screenState.value = editing.copy(
+            draft = editing.draft.copy(crop = crop),
+            aspectRatio = resolved,
+            cropIsAuto = resolved == null && editing.cropIsAuto
+        )
+    }
+
+    fun editorReset() {
+        val editing = _screenState.value as? ScreenState.Editing ?: return
+        viewModelScope.launch {
+            val base = withContext(Dispatchers.Default) { renderEditorBase(editing.result.freezeGround, 0) }
+            _screenState.value = editing.copy(baseBitmap = base, draft = EditParams(), aspectRatio = null, cropIsAuto = true)
+        }
+    }
+
+    fun editorCancel() {
+        val editing = _screenState.value as? ScreenState.Editing ?: return
+        _screenState.value = editing.result
+    }
+
+    fun editorApply() {
+        val editing = _screenState.value as? ScreenState.Editing ?: return
+        viewModelScope.launch {
+            val preview = withContext(Dispatchers.Default) { renderPreview(editing.result.freezeGround, editing.draft) }
+            _screenState.value = editing.result.copy(edit = editing.draft, previewBitmap = preview, saveState = SaveState.Idle)
+        }
+    }
+
+    // ---------- Сохранение ----------
 
     fun saveResult() {
         val current = _screenState.value as? ScreenState.Result ?: return
+        val full = (if (current.freezeGround) fullGroundFrozen else fullSkyOnly) ?: return
         _screenState.value = current.copy(saveState = SaveState.Saving)
         viewModelScope.launch {
-            val success = withContext(Dispatchers.IO) {
-                ExportRepository.saveToGallery(getApplication<Application>(), current.shownBitmap)
+            val success = try {
+                withContext(Dispatchers.IO) {
+                    val edited = current.edit.applyTo(full)
+                    ExportRepository.save(getApplication<Application>(), edited, current.exportFormat)
+                }
+            } catch (e: OutOfMemoryError) {
+                false
             }
             val latest = _screenState.value as? ScreenState.Result ?: return@launch
             _screenState.value = latest.copy(saveState = if (success) SaveState.Success else SaveState.Failed)
         }
     }
 
-    fun dismissError() {
-        (_screenState.value as? ScreenState.Picking)?.let { _screenState.value = it.copy(previousError = null) }
-    }
+    fun dismissError() = updatePicking { it.copy(previousError = null) }
 
     fun reset() {
         processingJob?.cancel()
+        releaseResults()
         _screenState.value = ScreenState.Picking()
+    }
+
+    private fun releaseResults() {
+        fullGroundFrozen = null; fullSkyOnly = null
+        previewGroundFrozen = null; previewSkyOnly = null
+    }
+
+    private fun previewSource(freezeGround: Boolean): Rgb16Image =
+        (if (freezeGround) previewGroundFrozen else previewSkyOnly) ?: error("нет результата")
+
+    private fun renderPreview(freezeGround: Boolean, edit: EditParams): Bitmap =
+        ImageDecoding.rgb16ToBitmap(edit.applyTo(previewSource(freezeGround)))
+
+    private fun renderEditorBase(freezeGround: Boolean, quarterTurns: Int): Bitmap =
+        ImageDecoding.rgb16ToBitmap(previewSource(freezeGround).rotateQuarterTurns(quarterTurns))
+
+    private fun autoCrop(base: Bitmap, degrees: Float): CropRect = EditParams.inscribedCrop(base.width, base.height, degrees)
+
+    /** Наибольшая рамка с пропорциями [ratio] (ширина/высота в пикселях) по центру внутри [bounds]. */
+    private fun fitAspect(base: Bitmap, ratio: Float, bounds: CropRect): CropRect {
+        val bw = (bounds.right - bounds.left) * base.width
+        val bh = (bounds.bottom - bounds.top) * base.height
+        val (w, h) = if (bw / bh > ratio) (bh * ratio) to bh else bw to (bw / ratio)
+        val cx = (bounds.left + bounds.right) / 2f
+        val cy = (bounds.top + bounds.bottom) / 2f
+        val nw = w / base.width / 2f
+        val nh = h / base.height / 2f
+        return CropRect(cx - nw, cy - nh, cx + nw, cy + nh)
+    }
+
+    private companion object {
+        const val PREVIEW_MAX_SIDE = 1600
     }
 }

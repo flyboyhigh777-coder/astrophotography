@@ -8,6 +8,7 @@ import android.provider.OpenableColumns
 import androidx.exifinterface.media.ExifInterface
 import com.astrostacker.core.ColorSpace
 import com.astrostacker.core.FloatImage
+import com.astrostacker.core.Rgb16Image
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -74,6 +75,10 @@ object ImageDecoding {
         }
         return Bitmap.createBitmap(pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
     }
+
+    /** 16-битный результат -> `Bitmap` (8 бит) для показа на экране. */
+    fun rgb16ToBitmap(image: Rgb16Image): Bitmap =
+        Bitmap.createBitmap(image.toArgb8(), image.width, image.height, Bitmap.Config.ARGB_8888)
 
     private fun to8Bit(value: Float): Int = (value * 255f + 0.5f).toInt().coerceIn(0, 255)
 

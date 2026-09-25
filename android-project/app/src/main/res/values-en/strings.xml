@@ -6,9 +6,6 @@
     <string name="picker_instructions">Pick a series of night-sky photos shot from a tripod (camera did not move between shots). Stars are aligned to the first frame, and the ground is taken from the first frame. At least 2 frames are required; for a visible improvement, 10-15 or more.</string>
     <string name="picker_select_frames">Select frames</string>
     <string name="picker_selected_count">Frames selected: %1$d</string>
-    <string name="picker_select_dark_frames">Dark frames (optional)</string>
-    <string name="picker_dark_frames_hint">Frames shot with the lens cap on, same shutter speed/ISO — used to remove hot pixels on long exposures.</string>
-    <string name="picker_dark_selected_count">Dark frames selected: %1$d</string>
     <string name="picker_start_button">Process</string>
     <string name="picker_min_frames_warning">Please select at least 2 frames</string>
 
@@ -26,12 +23,45 @@
     <string name="result_frames_rejected_note">Some frames could not be aligned (too few shared stars) and were left out of the stack.</string>
     <string name="result_freeze_ground_label">Ground from the first frame</string>
     <string name="result_freeze_ground_hint">Mountains, trees and other objects come from the first shot; the sky comes from all frames aligned on the stars.</string>
-    <string name="result_save_button">Save to gallery</string>
-    <string name="result_save_success">Saved to gallery</string>
+    <string name="result_save_success">Saved to Pictures/AstroStacker (TIFF goes to Download/AstroStacker if the gallery does not accept it)</string>
     <string name="result_save_error">Failed to save the file</string>
     <string name="result_start_over">Start over</string>
 
     <string name="error_generic">Something went wrong: %1$s</string>
     <string name="error_decode_failed">Could not read file: %1$s</string>
     <string name="error_too_few_frames">Too few frames were successfully aligned (need at least 2). Check that the frames are from the same series with matching framing.</string>
+
+    <!-- Калибровка, поворот/обрезка, форматы -->
+    <string name="picker_too_many_frames">More than %1$d frames per series is not recommended: the sky rotates too far and artifacts appear near the edges. Split the shoot into several series.</string>
+    <string name="picker_calibration_title">Calibration frames (optional)</string>
+    <string name="picker_calibration_intro">Shot on location with the same camera and ISO. They remove electronic noise, hot pixels and vignetting, so more detail and color can be pulled from the result.</string>
+    <string name="picker_darks_title">Darks</string>
+    <string name="picker_darks_hint">Lens cap on, same exposure and ISO as the light frames. 10–20 frames, right after the session (same sensor temperature).</string>
+    <string name="picker_bias_title">Bias</string>
+    <string name="picker_bias_hint">Lens cap on, shortest exposure, same ISO. Removes the sensor offset. 20–30 frames.</string>
+    <string name="picker_flats_title">Flats</string>
+    <string name="picker_flats_hint">Evenly lit lens (white phone screen or dawn sky through white cloth), same aperture and focus. Removes vignetting and dust. 10–20 frames.</string>
+    <string name="picker_calibration_count">selected: %1$d</string>
+    <string name="picker_calibration_select">Select</string>
+    <string name="stage_load">Reading and calibrating frames</string>
+    <string name="edit_title">Rotate and crop</string>
+    <string name="edit_rotate_left">↺ 90°</string>
+    <string name="edit_rotate_right">↻ 90°</string>
+    <string name="edit_straighten">Horizon: %1$.1f°</string>
+    <string name="edit_aspect">Aspect ratio</string>
+    <string name="edit_aspect_free">Free</string>
+    <string name="edit_aspect_original">Original</string>
+    <string name="edit_hint">Drag the corners to crop; drag inside the frame to move it. When you tilt the horizon, the frame shrinks automatically so no black corners appear.</string>
+    <string name="edit_reset">Reset</string>
+    <string name="edit_cancel">Cancel</string>
+    <string name="edit_apply">Apply</string>
+    <string name="result_calibration_used">Calibration: %1$s</string>
+    <string name="result_edit_button">Rotate and crop</string>
+    <string name="result_format_label">File format</string>
+    <string name="result_format_tiff_hint">Lossless, 16 bits per channel: the most data for editing in Photoshop, Lightroom, PixInsight. Large file; not every gallery app shows it.</string>
+    <string name="result_format_png_hint">Lossless, 8 bits per channel. Opens everywhere.</string>
+    <string name="result_format_jpeg_hint">Maximum quality (100), 8 bits. Smallest file, for sharing.</string>
+    <string name="result_save_button">Save (%1$s)</string>
+    <string name="result_saving">Saving…</string>
+    <string name="format_tiff16">TIFF 16-bit</string>
 </resources>

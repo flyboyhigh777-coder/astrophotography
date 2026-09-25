@@ -7,9 +7,6 @@
     <string name="picker_instructions">Выберите серию снимков ночного неба, сделанных со штатива (камера не двигалась между кадрами). Звёзды совмещаются с первым кадром, землю приложение берёт из первого кадра. Нужно минимум 2 кадра, для заметного результата — от 10-15.</string>
     <string name="picker_select_frames">Выбрать кадры</string>
     <string name="picker_selected_count">Выбрано кадров: %1$d</string>
-    <string name="picker_select_dark_frames">Тёмные кадры (необязательно)</string>
-    <string name="picker_dark_frames_hint">Кадры с закрытым объективом, та же выдержка/ISO — помогают убрать горячие пиксели на длинных выдержках.</string>
-    <string name="picker_dark_selected_count">Выбрано тёмных кадров: %1$d</string>
     <string name="picker_start_button">Обработать</string>
     <string name="picker_min_frames_warning">Нужно выбрать хотя бы 2 кадра</string>
 
@@ -29,8 +26,7 @@
     <string name="result_frames_rejected_note">Часть кадров не удалось совместить (мало общих звёзд) — они не попали в склейку.</string>
     <string name="result_freeze_ground_label">Земля из первого кадра</string>
     <string name="result_freeze_ground_hint">Горы, деревья и другие объекты берутся из первого снимка, небо — из всех кадров, совмещённых по звёздам.</string>
-    <string name="result_save_button">Сохранить в галерею</string>
-    <string name="result_save_success">Сохранено в галерею</string>
+    <string name="result_save_success">Сохранено в Pictures/AstroStacker (TIFF — в Download/AstroStacker, если галерея не принимает этот формат)</string>
     <string name="result_save_error">Не удалось сохранить файл</string>
     <string name="result_start_over">Начать заново</string>
 
@@ -38,4 +34,38 @@
     <string name="error_generic">Что-то пошло не так: %1$s</string>
     <string name="error_decode_failed">Не удалось прочитать файл: %1$s</string>
     <string name="error_too_few_frames">Слишком мало кадров успешно совмещено (нужно минимум 2). Проверьте, что кадры сняты одной серией с одинаковым кадрированием.</string>
+
+    <!-- Калибровка, поворот/обрезка, форматы -->
+    <string name="picker_too_many_frames">Больше %1$d кадров в одной серии не рекомендуется: небо успевает сильно повернуться, и по краям появляются артефакты. Лучше разбить съёмку на несколько серий.</string>
+    <string name="picker_calibration_title">Калибровочные кадры (необязательно)</string>
+    <string name="picker_calibration_intro">Снимаются на месте, той же камерой и с тем же ISO. Убирают электронный шум, горячие пиксели и виньетирование — из результата можно вытянуть больше деталей и цвета.</string>
+    <string name="picker_darks_title">Дарки</string>
+    <string name="picker_darks_hint">Объектив закрыт крышкой, та же выдержка и ISO, что у основных кадров. Лучше 10–20 штук, сразу после съёмки (матрица той же температуры).</string>
+    <string name="picker_bias_title">Биасы</string>
+    <string name="picker_bias_hint">Объектив закрыт, самая короткая выдержка, тот же ISO. Убирают электронное смещение матрицы. 20–30 штук.</string>
+    <string name="picker_flats_title">Флэты</string>
+    <string name="picker_flats_hint">Равномерно освещённый объектив (белый экран телефона или рассветное небо через белую ткань), та же диафрагма и фокус. Убирают виньетирование и пылинки. 10–20 штук.</string>
+    <string name="picker_calibration_count">выбрано: %1$d</string>
+    <string name="picker_calibration_select">Выбрать</string>
+    <string name="stage_load">Чтение и калибровка кадров</string>
+    <string name="edit_title">Повернуть и обрезать</string>
+    <string name="edit_rotate_left">↺ 90°</string>
+    <string name="edit_rotate_right">↻ 90°</string>
+    <string name="edit_straighten">Горизонт: %1$.1f°</string>
+    <string name="edit_aspect">Пропорции</string>
+    <string name="edit_aspect_free">Свободно</string>
+    <string name="edit_aspect_original">Как в кадре</string>
+    <string name="edit_hint">Тяните углы рамки, чтобы обрезать; тяните внутри рамки, чтобы её сдвинуть. При наклоне горизонта рамка сама уменьшается, чтобы не было чёрных уголков.</string>
+    <string name="edit_reset">Сброс</string>
+    <string name="edit_cancel">Отмена</string>
+    <string name="edit_apply">Применить</string>
+    <string name="result_calibration_used">Калибровка: %1$s</string>
+    <string name="result_edit_button">Повернуть и обрезать</string>
+    <string name="result_format_label">Формат файла</string>
+    <string name="result_format_tiff_hint">Без потерь, 16 бит на канал — максимум данных для обработки в Photoshop, Lightroom, PixInsight. Большой файл; не все галереи его показывают.</string>
+    <string name="result_format_png_hint">Без потерь, 8 бит на канал. Открывается везде.</string>
+    <string name="result_format_jpeg_hint">Максимальное качество (100), 8 бит. Самый маленький файл, для отправки и публикации.</string>
+    <string name="result_save_button">Сохранить (%1$s)</string>
+    <string name="result_saving">Сохранение…</string>
+    <string name="format_tiff16">TIFF 16 бит</string>
 </resources>

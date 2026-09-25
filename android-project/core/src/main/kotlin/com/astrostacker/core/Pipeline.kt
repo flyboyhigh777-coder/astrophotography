@@ -1,7 +1,8 @@
 package com.astrostacker.core
 
 /** Этап пайплайна для колбэка прогресса — :app привязывает его к UI. */
-enum class Stage { DETECT_STARS, REGISTER, STACK, GROUND, DONE }
+/** [LOAD] - чтение и калибровка кадров, выполняется в :app до [Pipeline.run]. */
+enum class Stage { LOAD, DETECT_STARS, REGISTER, STACK, GROUND, DONE }
 
 data class ProgressUpdate(val stage: Stage, val current: Int, val total: Int, val message: String = "")
 

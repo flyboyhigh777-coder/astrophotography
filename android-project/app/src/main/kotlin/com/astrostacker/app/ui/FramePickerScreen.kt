@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -28,19 +29,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.astrostacker.app.ErrorMessage
 import com.astrostacker.app.R
+import com.astrostacker.app.RECOMMENDED_MAX_FRAMES
 import com.astrostacker.app.ScreenState
 
 /**
- * Первый экран: выбор серии световых кадров (обязательно) и, опционально,
- * тёмных кадров для калибровки горячих пикселей (см. `DarkFrameCalibrator` в
- * `:core`). Кнопка "Обработать" внизу закреплена ВНЕ прокручиваемой области -
- * см. комментарий у [Modifier.weight] ниже.
+ * Первый экран: серия световых кадров (обязательно) и, по желанию,
+ * калибровочные кадры - дарки, биасы, флэты (см. `FrameCalibration` в `:core`).
+ * Кнопка "Обработать" закреплена внизу ВНЕ прокручиваемой области.
  */
 @Composable
 fun FramePickerScreen(
     state: ScreenState.Picking,
     onLightFramesSelected: (List<Uri>) -> Unit,
     onDarkFramesSelected: (List<Uri>) -> Unit,
+    onBiasFramesSelected: (List<Uri>) -> Unit,
+    onFlatFramesSelected: (List<Uri>) -> Unit,
     onStartProcessing: () -> Unit,
     onDismissError: () -> Unit
 ) {
@@ -48,18 +51,9 @@ fun FramePickerScreen(
         contract = ActivityResultContracts.PickMultipleVisualMedia()
     ) { uris -> if (uris.isNotEmpty()) onLightFramesSelected(uris) }
 
-    val darkPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia()
-    ) { uris -> if (uris.isNotEmpty()) onDarkFramesSelected(uris) }
-
-    val imageOnlyRequest = PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly)
-
     Column(modifier = Modifier.fillMaxSize()) {
-        // Прокручиваемая часть - весь контент, кроме финальной кнопки. ВАЖНО:
-        // Modifier.weight() нельзя вешать на сам прокручиваемый Column (в паре
-        // с .verticalScroll() он получает неограниченную высоту при замере, и
-        // weight внутри нЕ работает/падает) - поэтому weight здесь, на ВНЕШНЕМ,
-        // непрокручиваемом Column, а .verticalScroll - только на вложенном.
+        // weight - на внешнем непрокручиваемом Column, verticalScroll - на
+        // вложенном (weight+verticalScroll на одном Column падает при замере).
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -73,7 +67,7 @@ fun FramePickerScreen(
             state.previousError?.let { error -> ErrorBanner(error = error, onDismiss = onDismissError) }
 
             Button(
-                onClick = { lightPickerLauncher.launch(imageOnlyRequest) },
+                onClick = { lightPickerLauncher.launch(imageOnlyRequest()) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.picker_select_frames))
@@ -82,20 +76,40 @@ fun FramePickerScreen(
                 stringResource(R.string.picker_selected_count, state.lightFrames.size),
                 style = MaterialTheme.typography.bodyMedium
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(stringResource(R.string.picker_select_dark_frames), style = MaterialTheme.typography.titleMedium)
-            Text(stringResource(R.string.picker_dark_frames_hint), style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(
-                onClick = { darkPickerLauncher.launch(imageOnlyRequest) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(R.string.picker_select_dark_frames))
+            if (state.lightFrames.size > RECOMMENDED_MAX_FRAMES) {
+                Text(
+                    stringResource(R.string.picker_too_many_frames, RECOMMENDED_MAX_FRAMES),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
+
+            Spacer(Modifier.height(4.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+            Text(stringResource(R.string.picker_calibration_title), style = MaterialTheme.typography.titleMedium)
             Text(
-                stringResource(R.string.picker_dark_selected_count, state.darkFrames.size),
-                style = MaterialTheme.typography.bodyMedium
+                stringResource(R.string.picker_calibration_intro),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            CalibrationPicker(
+                title = stringResource(R.string.picker_darks_title),
+                hint = stringResource(R.string.picker_darks_hint),
+                count = state.darkFrames.size,
+                onSelected = onDarkFramesSelected
+            )
+            CalibrationPicker(
+                title = stringResource(R.string.picker_bias_title),
+                hint = stringResource(R.string.picker_bias_hint),
+                count = state.biasFrames.size,
+                onSelected = onBiasFramesSelected
+            )
+            CalibrationPicker(
+                title = stringResource(R.string.picker_flats_title),
+                hint = stringResource(R.string.picker_flats_hint),
+                count = state.flatFrames.size,
+                onSelected = onFlatFramesSelected
             )
         }
 
@@ -103,7 +117,7 @@ fun FramePickerScreen(
             if (state.lightFrames.size < 2) {
                 Text(
                     stringResource(R.string.picker_min_frames_warning),
-                    color = MaterialTheme.colorScheme.error,
+                    color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -114,6 +128,32 @@ fun FramePickerScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.picker_start_button))
+            }
+        }
+    }
+}
+
+private fun imageOnlyRequest() = PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly)
+
+@Composable
+private fun CalibrationPicker(title: String, hint: String, count: Int, onSelected: (List<Uri>) -> Unit) {
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris -> if (uris.isNotEmpty()) onSelected(uris) }
+
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.picker_calibration_count, count),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            OutlinedButton(onClick = { launcher.launch(imageOnlyRequest()) }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.picker_calibration_select))
             }
         }
     }

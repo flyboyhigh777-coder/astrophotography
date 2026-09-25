@@ -22,7 +22,7 @@ import com.astrostacker.core.Stage
 
 /** Порядок стадий для общего (сквозного по всему пайплайну) прогресс-бара - см. [overallFraction]. */
 private val STAGE_ORDER = listOf(
-    Stage.DETECT_STARS, Stage.REGISTER, Stage.STACK, Stage.GROUND, Stage.DONE
+    Stage.LOAD, Stage.DETECT_STARS, Stage.REGISTER, Stage.STACK, Stage.GROUND, Stage.DONE
 )
 
 @Composable
@@ -60,6 +60,7 @@ fun ProcessingScreen(progress: ProgressUpdate, onCancel: () -> Unit) {
 
 @Composable
 private fun stageLabel(stage: Stage): String = when (stage) {
+    Stage.LOAD -> stringResource(R.string.stage_load)
     Stage.DETECT_STARS -> stringResource(R.string.stage_detect_stars)
     Stage.REGISTER -> stringResource(R.string.stage_register)
     Stage.STACK -> stringResource(R.string.stage_stack)

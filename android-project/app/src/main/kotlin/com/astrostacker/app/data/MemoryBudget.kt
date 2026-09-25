@@ -41,8 +41,9 @@ object MemoryBudget {
 
     data class Budget(val maxTotalPixels: Long, val maxMemoryBytes: Long, val frameCount: Int)
 
-    fun compute(frameCount: Int, maxMemoryBytes: Long = Runtime.getRuntime().maxMemory()): Budget {
-        val n = frameCount.coerceAtLeast(1).toLong()
+    /** [extraFullFrames] - сколько ещё полноразмерных FloatImage держится параллельно (мастер-кадры калибровки). */
+    fun compute(frameCount: Int, extraFullFrames: Int = 0, maxMemoryBytes: Long = Runtime.getRuntime().maxMemory()): Budget {
+        val n = frameCount.coerceAtLeast(1).toLong() + extraFullFrames.coerceAtLeast(0)
         val usableBytes = (maxMemoryBytes * USABLE_FRACTION).toLong()
         val bytesPerPixelTotal = (n + EXTRA_WHOLE_IMAGE_BUFFERS) * BYTES_PER_PIXEL_FLOAT_IMAGE
         val rawMaxPixels = if (bytesPerPixelTotal > 0) usableBytes / bytesPerPixelTotal else MIN_TOTAL_PIXELS

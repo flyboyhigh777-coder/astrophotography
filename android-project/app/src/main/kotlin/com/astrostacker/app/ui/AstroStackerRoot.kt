@@ -32,6 +32,8 @@ fun AstroStackerRoot(viewModel: ProcessingViewModel) {
                 state = current,
                 onLightFramesSelected = viewModel::updateLightFrames,
                 onDarkFramesSelected = viewModel::updateDarkFrames,
+                onBiasFramesSelected = viewModel::updateBiasFrames,
+                onFlatFramesSelected = viewModel::updateFlatFrames,
                 onStartProcessing = viewModel::startProcessing,
                 onDismissError = viewModel::dismissError
             )
@@ -42,8 +44,20 @@ fun AstroStackerRoot(viewModel: ProcessingViewModel) {
             is ScreenState.Result -> ResultScreen(
                 state = current,
                 onFreezeGroundChanged = viewModel::setFreezeGround,
+                onEdit = viewModel::openEditor,
+                onFormatChanged = viewModel::setExportFormat,
                 onSave = viewModel::saveResult,
                 onReset = viewModel::reset
+            )
+            is ScreenState.Editing -> EditScreen(
+                state = current,
+                onRotateQuarter = viewModel::editorRotateQuarter,
+                onStraighten = viewModel::editorStraighten,
+                onCropChange = viewModel::editorSetCrop,
+                onAspect = viewModel::editorSetAspect,
+                onReset = viewModel::editorReset,
+                onCancel = viewModel::editorCancel,
+                onApply = viewModel::editorApply
             )
         }
     }

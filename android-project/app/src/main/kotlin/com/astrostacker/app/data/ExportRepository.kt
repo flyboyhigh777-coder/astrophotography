@@ -1,6 +1,5 @@
 package com.astrostacker.app.data
 
-import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -8,76 +7,102 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import com.astrostacker.core.Rgb16Image
+import com.astrostacker.core.TiffWriter
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/** Формат сохранения результата. */
+enum class ExportFormat(val extension: String, val mimeType: String) {
+    /** 16 бит на канал, без сжатия — максимум данных для дальнейшей обработки (Photoshop, Lightroom, PixInsight). */
+    TIFF16("tif", "image/tiff"),
+    /** 8 бит на канал, сжатие без потерь. */
+    PNG("png", "image/png"),
+    /** 8 бит, качество 100 — файл в разы меньше, открывается везде. */
+    JPEG("jpg", "image/jpeg")
+}
+
 /**
- * Сохранение результата в галерею через `MediaStore`. Формат - PNG (без
- * потерь, 8 бит/канал - предел `Bitmap.compress(PNG,...)` в публичном Android
- * API, см. docs/ARCHITECTURE.md §2.2).
+ * Сохранение результата в `Pictures/AstroStacker` через `MediaStore`.
  *
  * На Android 10+ (API 29, Scoped Storage) запись в MediaStore не требует
- * разрешений на хранилище вовсе - используется паттерн `IS_PENDING`
- * (см. `saveScoped`). На Android 9 (API 28, наш `minSdk`) хранилище ещё не
- * "scoped" на уровне ОС независимо от того, что объявляет приложение, поэтому
- * нужен `WRITE_EXTERNAL_STORAGE` (объявлен в манифесте с
- * `maxSdkVersion="28"` - см. `AndroidManifest.xml`, тот же приём, что уже
- * применён там для `READ_EXTERNAL_STORAGE`).
+ * разрешений - используется паттерн `IS_PENDING`. На Android 9 (API 28,
+ * наш `minSdk`) нужен `WRITE_EXTERNAL_STORAGE` (объявлен в манифесте с
+ * `maxSdkVersion="28"`).
+ *
+ * TIFF: если коллекция изображений откажется принять `image/tiff` (зависит
+ * от прошивки), файл кладётся в `Download/AstroStacker`.
  */
 object ExportRepository {
 
-    private const val MIME_TYPE = "image/png"
     private const val RELATIVE_DIR = "AstroStacker"
+    private const val JPEG_QUALITY = 100
 
-    fun saveToGallery(context: Context, bitmap: Bitmap): Boolean {
-        val displayName = "astrostacker_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + ".png"
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            saveScoped(context, bitmap, displayName)
-        } else {
-            saveLegacy(context, bitmap, displayName)
+    fun save(context: Context, image: Rgb16Image, format: ExportFormat): Boolean {
+        val displayName = "astrostacker_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + "." + format.extension
+        val writer: (OutputStream) -> Unit = when (format) {
+            ExportFormat.TIFF16 -> { out -> TiffWriter.write(out, image) }
+            ExportFormat.PNG -> { out -> compress(image, Bitmap.CompressFormat.PNG, 100, out) }
+            ExportFormat.JPEG -> { out -> compress(image, Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out) }
+        }
+        if (saveTo(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, Environment.DIRECTORY_PICTURES, displayName, format.mimeType, writer)) {
+            return true
+        }
+        if (format == ExportFormat.TIFF16 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return saveTo(context, MediaStore.Downloads.EXTERNAL_CONTENT_URI, Environment.DIRECTORY_DOWNLOADS, displayName, format.mimeType, writer)
+        }
+        return false
+    }
+
+    private fun compress(image: Rgb16Image, format: Bitmap.CompressFormat, quality: Int, out: OutputStream) {
+        val bitmap = Bitmap.createBitmap(image.toArgb8(), image.width, image.height, Bitmap.Config.ARGB_8888)
+        try {
+            check(bitmap.compress(format, quality, out)) { "Bitmap.compress вернул false" }
+        } finally {
+            bitmap.recycle()
         }
     }
 
-    private fun saveScoped(context: Context, bitmap: Bitmap, displayName: String): Boolean {
+    private fun saveTo(
+        context: Context,
+        collection: Uri,
+        directory: String,
+        displayName: String,
+        mimeType: String,
+        writer: (OutputStream) -> Unit
+    ): Boolean {
         val resolver = context.contentResolver
+        val scoped = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
-            put(MediaStore.Images.Media.MIME_TYPE, MIME_TYPE)
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/" + RELATIVE_DIR)
-            // Пока файл не дописан - IS_PENDING=1: приложения-читатели (в том
-            // числе сама Галерея) не должны видеть недописанный PNG.
-            put(MediaStore.Images.Media.IS_PENDING, 1)
+            put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            if (scoped) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "$directory/$RELATIVE_DIR")
+                // Пока файл не дописан - IS_PENDING=1: другие приложения его не видят.
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
         }
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return false
-        val wrote = writePng(resolver, uri, bitmap)
-        if (!wrote) {
-            // Не оставляем "призрачную" вечно-pending запись при ошибке записи.
-            resolver.delete(uri, null, null)
-            return false
-        }
-        val doneValues = ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }
-        resolver.update(uri, doneValues, null, null)
-        return true
-    }
+        val uri = try {
+            resolver.insert(collection, values)
+        } catch (e: Exception) {
+            null
+        } ?: return false
 
-    private fun saveLegacy(context: Context, bitmap: Bitmap, displayName: String): Boolean {
-        val resolver = context.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
-            put(MediaStore.Images.Media.MIME_TYPE, MIME_TYPE)
-        }
-        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return false
-        val wrote = writePng(resolver, uri, bitmap)
-        if (!wrote) resolver.delete(uri, null, null)
-        return wrote
-    }
-
-    private fun writePng(resolver: ContentResolver, uri: Uri, bitmap: Bitmap): Boolean {
-        return try {
-            resolver.openOutputStream(uri)?.use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) } ?: false
+        val wrote = try {
+            resolver.openOutputStream(uri)?.use { writer(it); true } ?: false
         } catch (e: Exception) {
             false
         }
+        if (!wrote) {
+            // Не оставляем "призрачную" недописанную запись.
+            resolver.delete(uri, null, null)
+            return false
+        }
+        if (scoped) {
+            resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+        }
+        return true
     }
 }
