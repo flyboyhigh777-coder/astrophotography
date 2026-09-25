@@ -125,7 +125,7 @@ class AppFlowTest {
     /** Ждёт экран [T]; при ошибке или таймауте - скриншот, журнал состояний и стеки рабочих потоков. */
     private inline fun <reified T : ScreenState> waitFor(vm: ProcessingViewModel, timeoutMs: Long = 120_000) {
         try {
-            compose.waitUntil(timeoutMs) {
+            pumpUntil(timeoutMs) {
                 val s = vm.screenState.value
                 s is T || (s is ScreenState.Picking && s.previousError != null)
             }
@@ -140,11 +140,28 @@ class AppFlowTest {
         }
     }
 
+    /**
+     * В Robolectric главный поток - это поток теста. `compose.waitUntil` просто
+     * спит и не выполняет очередь главного потока, поэтому корутины,
+     * возвращающиеся на Dispatchers.Main после фоновой работы, никогда не
+     * продолжаются. Здесь очередь явно прокручивается между проверками.
+     */
+    private fun pumpUntil(timeoutMs: Long, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            shadowOf(android.os.Looper.getMainLooper()).idle()
+            compose.waitForIdle()
+            if (condition()) return
+            if (System.currentTimeMillis() > deadline) throw AssertionError("Условие не выполнилось за $timeoutMs мс")
+            Thread.sleep(20)
+        }
+    }
+
     private fun dumpDiagnostics(reason: String) {
         println("APPFLOW DIAG $reason")
         synchronized(log) { log.forEach { println("APPFLOW STATE $it") } }
         for ((thread, stack) in Thread.getAllStackTraces()) {
-            if (thread.name.contains("DefaultDispatcher") || thread.name.contains("main") || thread.name.contains("Test worker")) {
+            if (thread.name.contains("DefaultDispatcher") || thread.name.contains("Main", ignoreCase = true)) {
                 println("APPFLOW THREAD ${thread.name} ${thread.state}")
                 stack.take(25).forEach { println("APPFLOW     at $it") }
             }
@@ -197,15 +214,15 @@ class AppFlowTest {
         shot("08_result_after_edit")
 
         compose.runOnUiThread { vm.setFreezeGround(false) }
-        compose.waitUntil(10_000) { (vm.screenState.value as? ScreenState.Result)?.freezeGround == false }
+        pumpUntil(10_000) { (vm.screenState.value as? ScreenState.Result)?.freezeGround == false }
         shot("09_result_sky_only")
         compose.runOnUiThread { vm.setFreezeGround(true) }
-        compose.waitUntil(10_000) { (vm.screenState.value as? ScreenState.Result)?.freezeGround == true }
+        pumpUntil(10_000) { (vm.screenState.value as? ScreenState.Result)?.freezeGround == true }
 
         for (format in listOf("JPEG", "PNG", "TIFF 16 бит")) {
             compose.onNodeWithText(format).performScrollTo().performClick()
             compose.onNodeWithText("Сохранить ($format)").performClick()
-            compose.waitUntil(60_000) { (vm.screenState.value as? ScreenState.Result)?.saveState.let { it == SaveState.Success || it == SaveState.Failed } }
+            pumpUntil(60_000) { (vm.screenState.value as? ScreenState.Result)?.saveState.let { it == SaveState.Success || it == SaveState.Failed } }
             val saveState = (vm.screenState.value as ScreenState.Result).saveState
             println("APPFLOW save $format -> $saveState")
             assertEquals("сохранение $format", SaveState.Success, saveState)
