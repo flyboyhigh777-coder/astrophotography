@@ -103,23 +103,60 @@ class AppFlowTest {
         return Triple(lightsUris, darks, flats)
     }
 
-    /** Ждёт экран [T]; если приложение вернулось к выбору кадров с ошибкой - падает сразу, со скриншотом и текстом ошибки. */
-    private inline fun <reified T : ScreenState> waitFor(vm: ProcessingViewModel, timeoutMs: Long = 180_000) {
-        compose.waitUntil(timeoutMs) {
-            val s = vm.screenState.value
-            s is T || (s is ScreenState.Picking && s.previousError != null)
+    private val log = java.util.Collections.synchronizedList(ArrayList<String>())
+    private val t0 = System.currentTimeMillis()
+
+    /** Пишет каждую смену состояния экрана (с временем и потоком) - для разбора зависаний. */
+    private fun trace(vm: ProcessingViewModel) {
+        Thread {
+            var last = ""
+            while (true) {
+                val s = vm.screenState.value
+                val d = when (s) {
+                    is ScreenState.Processing -> "Processing ${s.progress.stage} ${s.progress.current}/${s.progress.total}"
+                    else -> s::class.simpleName.orEmpty() + ((s as? ScreenState.Picking)?.previousError?.let { " error=$it" } ?: "")
+                }
+                if (d != last) { log.add("+${System.currentTimeMillis() - t0}ms $d"); last = d }
+                Thread.sleep(50)
+            }
+        }.apply { isDaemon = true }.start()
+    }
+
+    /** Ждёт экран [T]; при ошибке или таймауте - скриншот, журнал состояний и стеки рабочих потоков. */
+    private inline fun <reified T : ScreenState> waitFor(vm: ProcessingViewModel, timeoutMs: Long = 120_000) {
+        try {
+            compose.waitUntil(timeoutMs) {
+                val s = vm.screenState.value
+                s is T || (s is ScreenState.Picking && s.previousError != null)
+            }
+        } catch (e: Throwable) {
+            dumpDiagnostics("timeout waiting for ${T::class.simpleName}")
+            throw e
         }
         val s = vm.screenState.value
         if (s is ScreenState.Picking && s.previousError != null) {
-            shot("99_error")
+            dumpDiagnostics("error")
             throw AssertionError("Приложение вернулось к выбору кадров с ошибкой: ${s.previousError}")
         }
+    }
+
+    private fun dumpDiagnostics(reason: String) {
+        println("APPFLOW DIAG $reason")
+        synchronized(log) { log.forEach { println("APPFLOW STATE $it") } }
+        for ((thread, stack) in Thread.getAllStackTraces()) {
+            if (thread.name.contains("DefaultDispatcher") || thread.name.contains("main") || thread.name.contains("Test worker")) {
+                println("APPFLOW THREAD ${thread.name} ${thread.state}")
+                stack.take(25).forEach { println("APPFLOW     at $it") }
+            }
+        }
+        runCatching { shot("99_diagnostics") }
     }
 
     @Test
     fun fullFlow_pickCalibrateProcessEditSave() {
         val vm = ViewModelProvider(compose.activity)[ProcessingViewModel::class.java]
         val (lights, darks, flats) = makeFrames()
+        trace(vm)
 
         shot("01_picker_empty")
         compose.runOnUiThread {
