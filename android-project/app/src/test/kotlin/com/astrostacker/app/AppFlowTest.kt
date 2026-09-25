@@ -223,8 +223,17 @@ class AppFlowTest {
         compose.runOnUiThread { vm.setFreezeGround(true) }
         pumpUntil(10_000) { (vm.screenState.value as? ScreenState.Result)?.freezeGround == true }
 
-        for (format in listOf("JPEG", "PNG", "TIFF 16 бит")) {
-            compose.onNodeWithText(format).performScrollTo().performClick()
+        val formats = listOf(
+            com.astrostacker.app.data.ExportFormat.JPEG to "JPEG",
+            com.astrostacker.app.data.ExportFormat.PNG to "PNG",
+            com.astrostacker.app.data.ExportFormat.TIFF16 to "TIFF 16 бит"
+        )
+        for ((exportFormat, format) in formats) {
+            // Кнопка формата может оказаться у самого края прокручиваемой
+            // области, и клик в её центр попадёт в закреплённую ниже кнопку
+            // "Сохранить" - поэтому формат выбираем через ViewModel, а
+            // сохранение нажимаем в интерфейсе.
+            compose.runOnUiThread { vm.setExportFormat(exportFormat) }
             compose.onNodeWithText("Сохранить ($format)").performClick()
             pumpUntil(60_000) { (vm.screenState.value as? ScreenState.Result)?.saveState.let { it == SaveState.Success || it == SaveState.Failed } }
             val saveState = (vm.screenState.value as ScreenState.Result).saveState
