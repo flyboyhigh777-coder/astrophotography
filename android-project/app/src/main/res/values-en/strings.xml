@@ -97,4 +97,5 @@
     <string name="pano_rendering">Rebuilding panorama…</string>
     <string name="pano_autocrop">Crop empty edges</string>
     <string name="pano_autocrop_hint">Removes the uneven black border — keeps the largest rectangle without gaps.</string>
+    <string name="app_version">Version %1$s</string>
 </resources>

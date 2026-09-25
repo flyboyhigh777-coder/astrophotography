@@ -64,6 +64,11 @@ fun FramePickerScreen(
         ) {
             Text(stringResource(R.string.picker_title), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.picker_instructions), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                stringResource(R.string.app_version, com.astrostacker.app.BuildConfig.VERSION_NAME),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             state.previousError?.let { error -> ErrorBanner(error = error, onDismiss = onDismissError) }
 

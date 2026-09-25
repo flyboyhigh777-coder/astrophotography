@@ -86,6 +86,11 @@ private fun PanoPickerScreen(
         ) {
             Text(stringResource(R.string.pano_title), style = MaterialTheme.typography.headlineSmall)
             Text(stringResource(R.string.pano_instructions), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                stringResource(R.string.app_version, com.astrostacker.app.BuildConfig.VERSION_NAME),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
             state.error?.let { error ->
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {

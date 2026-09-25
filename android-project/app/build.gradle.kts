@@ -15,8 +15,10 @@ android {
         // этого пришлось бы отдельно тянуть кодек. См. docs/ARCHITECTURE.md §2.2.
         minSdk = 28
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        // Номер сборки GitHub Actions - чтобы на телефоне было видно, какая версия установлена.
+        val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = buildNumber
+        versionName = "0.4.$buildNumber"
 
         vectorDrawables { useSupportLibrary = true }
     }
@@ -42,6 +44,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // Robolectric-тесты запускают настоящее приложение (Activity + Compose)

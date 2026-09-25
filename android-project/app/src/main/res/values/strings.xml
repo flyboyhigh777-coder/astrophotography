@@ -101,4 +101,5 @@
     <string name="pano_rendering">Пересборка панорамы…</string>
     <string name="pano_autocrop">Обрезать пустые края</string>
     <string name="pano_autocrop_hint">Убирает неровные чёрные края по периметру — остаётся наибольший прямоугольник без пустот.</string>
+    <string name="app_version">Версия %1$s</string>
 </resources>
