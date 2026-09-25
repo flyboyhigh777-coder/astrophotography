@@ -166,4 +166,44 @@ class PanoramaFlowTest {
         // 16:9 из панорамы высотой ~300 пикс. (тестовые кадры 480×360) - ширина порядка 500.
         assertTrue("ширина ${edited.outputWidth}", edited.outputWidth > 300)
     }
+
+    /**
+     * "Снять камерой": нажатие запускает системную камеру (ACTION_IMAGE_CAPTURE)
+     * с content:// Uri нашего FileProvider, и каждый успешный снимок
+     * ДОБАВЛЯЕТСЯ к уже выбранным кадрам, а отменённый - ничего не меняет.
+     */
+    @Test
+    fun cameraButton_appendsEachShotToSelectedFrames() {
+        compose.onNodeWithText("Панорама").performClick()
+        val vm = ViewModelProvider(compose.activity)[PanoramaViewModel::class.java]
+        val fromGallery = makePhotos(2, 40.0)
+        compose.runOnUiThread { vm.updatePhotos(fromGallery) }
+        pump()
+        shot("pano_08_picker_with_camera_button")
+
+        fun takeShot(success: Boolean): Uri {
+            compose.onNodeWithText("Снять камерой").performClick()
+            pump()
+            val started = shadowOf(compose.activity).nextStartedActivityForResult
+                ?: throw AssertionError("камера не была запущена")
+            val intent = started.intent
+            assertEquals(android.provider.MediaStore.ACTION_IMAGE_CAPTURE, intent.action)
+            @Suppress("DEPRECATION")
+            val output = intent.getParcelableExtra<Uri>(android.provider.MediaStore.EXTRA_OUTPUT)!!
+            assertEquals("content", output.scheme)
+            assertEquals("${compose.activity.packageName}.fileprovider", output.authority)
+            shadowOf(compose.activity).receiveResult(intent, if (success) android.app.Activity.RESULT_OK else android.app.Activity.RESULT_CANCELED, null)
+            pump()
+            return output
+        }
+
+        val first = takeShot(success = true)
+        assertEquals(fromGallery + first, (vm.state.value as PanoScreen.Picking).photos)
+        val second = takeShot(success = true)
+        assertEquals(fromGallery + first + second, (vm.state.value as PanoScreen.Picking).photos)
+        takeShot(success = false)
+        assertEquals("отменённый снимок не должен менять список", 4, (vm.state.value as PanoScreen.Picking).photos.size)
+        compose.onNodeWithText("Выбрано кадров: 4").assertExists()
+        shot("pano_09_picker_after_two_camera_shots")
+    }
 }

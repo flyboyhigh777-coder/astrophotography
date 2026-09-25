@@ -45,5 +45,21 @@
             </intent-filter>
         </activity>
 
+        <!--
+          Uri для снимков "Снять камерой" (вкладка "Панорама"): системное
+          приложение камеры пишет JPEG в cacheDir/camera_frames/ через этот
+          провайдер. Разрешение CAMERA не нужно - снимает само приложение
+          камеры (ActivityResultContracts.TakePicture).
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 </manifest>

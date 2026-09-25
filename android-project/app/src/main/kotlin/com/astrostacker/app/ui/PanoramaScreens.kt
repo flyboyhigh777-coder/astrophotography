@@ -1,6 +1,9 @@
 package com.astrostacker.app.ui
 
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,12 +33,17 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.astrostacker.app.PanoScreen
@@ -45,6 +53,8 @@ import com.astrostacker.app.SaveState
 import com.astrostacker.app.data.ExportFormat
 import com.astrostacker.core.pano.PanoProjection
 import com.astrostacker.core.pano.PanoStage
+import androidx.core.content.FileProvider
+import java.io.File
 
 /** Вкладка "Панорама": переключает экраны по [PanoScreen]. */
 @Composable
@@ -79,6 +89,21 @@ private fun PanoPickerScreen(
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         if (uris.isNotEmpty()) onPhotos(uris)
     }
+
+    // "Снять камерой": системное приложение камеры пишет снимок в Uri от
+    // FileProvider (cacheDir/camera_frames/). Uri ждущего снимка переживает
+    // пересоздание Activity (rememberSaveable), а список кадров берётся
+    // актуальный на момент возврата из камеры (rememberUpdatedState).
+    val context = LocalContext.current
+    val currentPhotos by rememberUpdatedState(state.photos)
+    val currentOnPhotos by rememberUpdatedState(onPhotos)
+    var pendingCameraUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        val uri = pendingCameraUri
+        pendingCameraUri = null
+        // В отличие от выбора из галереи, снимок ДОБАВЛЯЕТСЯ к уже накопленным кадрам.
+        if (success && uri != null) currentOnPhotos(currentPhotos + uri)
+    }
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
@@ -110,6 +135,19 @@ private fun PanoPickerScreen(
                 onClick = { launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 modifier = Modifier.fillMaxWidth()
             ) { Text(stringResource(R.string.pano_select_photos)) }
+            OutlinedButton(
+                onClick = {
+                    val uri = newCameraFrameUri(context)
+                    pendingCameraUri = uri
+                    try {
+                        cameraLauncher.launch(uri)
+                    } catch (e: ActivityNotFoundException) {
+                        pendingCameraUri = null
+                        Toast.makeText(context, R.string.pano_picker_no_camera, Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(stringResource(R.string.pano_picker_take_photo)) }
             Text(stringResource(R.string.picker_selected_count, state.photos.size), style = MaterialTheme.typography.bodyMedium)
 
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -137,6 +175,13 @@ private fun PanoPickerScreen(
             }
         }
     }
+}
+
+/** Новый файл для снимка камерой в cacheDir/camera_frames/ и его content:// Uri (см. res/xml/file_paths.xml). */
+private fun newCameraFrameUri(context: Context): Uri {
+    val dir = File(context.cacheDir, "camera_frames").apply { mkdirs() }
+    val file = File(dir, "pano_${System.currentTimeMillis()}.jpg")
+    return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
 private val PANO_STAGES = listOf(PanoStage.LOAD, PanoStage.FEATURES, PanoStage.MATCH, PanoStage.ALIGN, PanoStage.RENDER, PanoStage.DONE)

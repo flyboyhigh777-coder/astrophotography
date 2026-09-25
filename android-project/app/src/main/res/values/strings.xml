@@ -102,4 +102,6 @@
     <string name="pano_autocrop">Обрезать пустые края</string>
     <string name="pano_autocrop_hint">Убирает неровные чёрные края по периметру — остаётся наибольший прямоугольник без пустот.</string>
     <string name="app_version">Версия %1$s</string>
+    <string name="pano_picker_take_photo">Снять камерой</string>
+    <string name="pano_picker_no_camera">Не найдено приложение камеры</string>
 </resources>
