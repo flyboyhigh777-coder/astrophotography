@@ -43,6 +43,22 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Robolectric-тесты запускают настоящее приложение (Activity + Compose)
+    // на JVM без эмулятора - см. app/src/test/.../AppFlowTest.kt.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            it.maxHeapSize = "3g"
+            it.systemProperty("robolectric.graphicsMode", "NATIVE")
+            it.systemProperty("roborazzi.test.record", "true")
+            it.testLogging {
+                events("passed", "failed")
+                showStandardStreams = true
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            }
+        }
+    }
 }
 
 dependencies {
@@ -62,6 +78,12 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 }

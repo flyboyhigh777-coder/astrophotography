@@ -1,0 +1,164 @@
+package com.astrostacker.app
+
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.lifecycle.ViewModelProvider
+import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.io.File
+import java.util.Random
+import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.pow
+import kotlin.math.sin
+
+/**
+ * Сквозной прогон НАСТОЯЩЕГО приложения (MainActivity + Compose + ViewModel +
+ * :core) на JVM через Robolectric: выбор кадров с калибровкой -> обработка ->
+ * результат -> "Повернуть и обрезать" -> сохранение. На каждом экране делается
+ * скриншот в app/build/outputs/roborazzi/ (CI выкладывает их в ветку ci-screenshots).
+ * Системный Photo Picker в Robolectric недоступен, поэтому кадры передаются
+ * во ViewModel напрямую - ровно то, что делает колбэк пикера.
+ */
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34], qualifiers = "ru-rRU-w411dp-h891dp-xxhdpi")
+class AppFlowTest {
+
+    @get:Rule
+    val compose = createAndroidComposeRule<MainActivity>()
+
+    private val w = 480
+    private val h = 320
+    private val outDir = File("build/outputs/roborazzi").apply { mkdirs() }
+
+    private fun shot(name: String) {
+        compose.waitForIdle()
+        compose.onRoot().captureRoboImage(File(outDir, "$name.png").path)
+    }
+
+    private fun horizon(x: Int) = 220.0 + 18 * sin(x / 40.0) + 7 * sin(x / 11.0)
+    private fun vignette(x: Int, y: Int): Double {
+        val dx = (x - w / 2.0) / (w / 2.0); val dy = (y - h / 2.0) / (h / 2.0)
+        return 1 - 0.35 * (dx * dx + dy * dy)
+    }
+    private fun sensor(x: Int, y: Int) = 0.03 + 0.03 * x / w + if (x == 90 && y == 80) 0.6 else 0.0
+
+    private fun writeJpeg(name: String, pixel: (Int, Int, Int) -> Double): Uri {
+        val px = IntArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) {
+            fun c(ch: Int) = (Math.pow(pixel(x, y, ch).coerceIn(0.0, 1.0), 1 / 2.2) * 255 + 0.5).toInt().coerceIn(0, 255)
+            px[y * w + x] = (0xFF shl 24) or (c(0) shl 16) or (c(1) shl 8) or c(2)
+        }
+        val file = File(compose.activity.cacheDir, name)
+        file.outputStream().use { Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.JPEG, 95, it) }
+        return Uri.fromFile(file)
+    }
+
+    private fun makeFrames(): Triple<List<Uri>, List<Uri>, List<Uri>> {
+        val rnd = Random(3)
+        val poleX = w / 2.0; val poleY = -700.0
+        val stars = List(250) { Triple(rnd.nextDouble() * w, rnd.nextDouble() * 230, 0.08 + rnd.nextDouble().pow(3) * 0.9) }
+        val lights = List(15) { Pair(rnd.nextInt(w), 235 + rnd.nextInt(80)) }
+        val lightsUris = (0 until 8).map { i ->
+            val a = Math.toRadians(0.35 * i); val c = cos(a); val s = sin(a)
+            val sky = DoubleArray(w * h)
+            for ((sx, sy, flux) in stars) {
+                val dx = sx - poleX; val dy = sy - poleY
+                val px = poleX + dx * c - dy * s; val py = poleY + dx * s + dy * c
+                for (yy in (py - 4).toInt()..(py + 4).toInt()) for (xx in (px - 4).toInt()..(px + 4).toInt()) {
+                    if (xx !in 0 until w || yy !in 0 until h) continue
+                    sky[yy * w + xx] += exp(-((xx - px).pow(2) + (yy - py).pow(2)) / (2 * 1.3 * 1.3)) * flux
+                }
+            }
+            val noise = Random(100L + i)
+            writeJpeg("light_$i.jpg") { x, y, ch ->
+                val base = if (y >= horizon(x)) {
+                    if (lights.any { Math.abs(it.first - x) <= 1 && Math.abs(it.second - y) <= 1 }) doubleArrayOf(0.9, 0.6, 0.2)[ch]
+                    else doubleArrayOf(0.015, 0.02, 0.012)[ch]
+                } else doubleArrayOf(0.05, 0.06, 0.09)[ch] + sky[y * w + x]
+                base * vignette(x, y) + sensor(x, y) + noise.nextGaussian() * 0.02
+            }
+        }
+        val darks = (0 until 4).map { k -> val r = Random(500L + k); writeJpeg("dark_$k.jpg") { x, y, _ -> sensor(x, y) + r.nextGaussian() * 0.005 } }
+        val flats = (0 until 4).map { k -> val r = Random(600L + k); writeJpeg("flat_$k.jpg") { x, y, _ -> 0.5 * vignette(x, y) + r.nextGaussian() * 0.005 } }
+        return Triple(lightsUris, darks, flats)
+    }
+
+    private inline fun <reified T : ScreenState> waitFor(vm: ProcessingViewModel, timeoutMs: Long = 180_000) {
+        compose.waitUntil(timeoutMs) { vm.screenState.value is T }
+    }
+
+    @Test
+    fun fullFlow_pickCalibrateProcessEditSave() {
+        val vm = ViewModelProvider(compose.activity)[ProcessingViewModel::class.java]
+        val (lights, darks, flats) = makeFrames()
+
+        shot("01_picker_empty")
+        compose.runOnUiThread {
+            vm.updateLightFrames(lights)
+            vm.updateDarkFrames(darks)
+            vm.updateFlatFrames(flats)
+        }
+        shot("02_picker_selected")
+        compose.onNodeWithText("Флэты").performScrollTo()
+        shot("03_picker_calibration")
+
+        val started = System.currentTimeMillis()
+        compose.onNodeWithText("Обработать").performClick()
+        waitFor<ScreenState.Result>(vm)
+        val result = vm.screenState.value as ScreenState.Result
+        println("APPFLOW processing ms=${System.currentTimeMillis() - started} accepted=${result.frameOutcomes.count { it.accepted }}/${result.frameOutcomes.size} calibration=${result.calibrationUsed}")
+        assertEquals("все кадры должны совместиться", lights.size, result.frameOutcomes.count { it.accepted })
+        assertEquals(listOf(CalibrationKind.DARK, CalibrationKind.FLAT), result.calibrationUsed)
+        shot("04_result")
+        compose.onNodeWithText("Сохранить (TIFF 16 бит)").assertExists()
+        compose.onNodeWithText("Формат файла").performScrollTo()
+        shot("05_result_controls")
+
+        compose.onNodeWithText("Повернуть и обрезать").performScrollTo().performClick()
+        waitFor<ScreenState.Editing>(vm)
+        shot("06_editor")
+        compose.runOnUiThread {
+            vm.editorStraighten(6f)
+            vm.editorSetAspect(1f)
+        }
+        shot("07_editor_straighten_6deg_square")
+        compose.onNodeWithText("Применить").performClick()
+        waitFor<ScreenState.Result>(vm)
+        val edited = vm.screenState.value as ScreenState.Result
+        println("APPFLOW edited preview=${edited.previewBitmap.width}x${edited.previewBitmap.height} edit=${edited.edit}")
+        assertTrue("после обрезки 1:1 превью должно быть квадратным",
+            Math.abs(edited.previewBitmap.width - edited.previewBitmap.height) <= 2)
+        shot("08_result_after_edit")
+
+        compose.runOnUiThread { vm.setFreezeGround(false) }
+        compose.waitUntil(10_000) { (vm.screenState.value as? ScreenState.Result)?.freezeGround == false }
+        shot("09_result_sky_only")
+        compose.runOnUiThread { vm.setFreezeGround(true) }
+        compose.waitUntil(10_000) { (vm.screenState.value as? ScreenState.Result)?.freezeGround == true }
+
+        for (format in listOf("JPEG", "PNG", "TIFF 16 бит")) {
+            compose.onNodeWithText(format).performScrollTo().performClick()
+            compose.onNodeWithText("Сохранить ($format)").performClick()
+            compose.waitUntil(60_000) { (vm.screenState.value as? ScreenState.Result)?.saveState.let { it == SaveState.Success || it == SaveState.Failed } }
+            val saveState = (vm.screenState.value as ScreenState.Result).saveState
+            println("APPFLOW save $format -> $saveState")
+            assertEquals("сохранение $format", SaveState.Success, saveState)
+        }
+        compose.onNodeWithText("Формат файла").performScrollTo()
+        shot("10_saved")
+    }
+}

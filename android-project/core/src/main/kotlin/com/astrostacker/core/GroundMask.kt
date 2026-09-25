@@ -1,5 +1,6 @@
 package com.astrostacker.core
 
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -27,8 +28,10 @@ object GroundMask {
         val blockSize: Int = 0,
         /** Во сколько сигм шума должна отличаться разность, чтобы блок считался признаком. */
         val significanceSigma: Double = 3.0,
-        /** Насколько блоков поднять горизонт вверх - запас, чтобы "шлейф" размазанной земли в небе точно ушёл под маску. */
-        val marginBlocks: Int = 1
+        /** На сколько пикселей поднять найденную линию горизонта - запас на неточность края. */
+        val marginPx: Int = 2,
+        /** Ширина плавного перехода небо/земля, пикс. */
+        val featherPx: Int = 3
     )
 
     /**
@@ -39,7 +42,9 @@ object GroundMask {
         reference: GrayImage,
         alignedStack: GrayImage,
         staticStack: GrayImage,
-        config: Config = Config()
+        config: Config = Config(),
+        /** Наибольшее смещение звёзд между кадрами, пикс. - настолько далеко от горизонта может тянуться "шлейф" земли. */
+        maxShiftPx: Double = 0.0
     ): GrayImage {
         val w = reference.width
         val h = reference.height
@@ -124,9 +129,108 @@ object GroundMask {
         }
 
         val smoothed = medianFilter(horizon, radius = max(1, nbx / 40))
-        for (bx in 0 until nbx) smoothed[bx] = (smoothed[bx] - config.marginBlocks).coerceIn(0, nby)
 
-        return rasterize(w, h, b, smoothed, nby)
+        // Уточнение до пикселя: грубый горизонт (по блокам) ищет лишь
+        // окрестность, а точную линию даёт самый резкий перепад яркости по
+        // вертикали в НЕСОВМЕЩЁННОМ стеке - в нём земля неподвижна и резкая,
+        // а шум усреднён.
+        val coarse = coarseHorizonPerPixel(w, b, smoothed, nby)
+        val search = (maxShiftPx + 3 * b).toInt()
+        val fine = IntArray(w) { Int.MAX_VALUE }
+        for (x in 0 until w) {
+            val yc = coarse[x]
+            if (yc == Int.MAX_VALUE) continue
+            fine[x] = strongestEdge(staticStack, x, (yc - search).coerceAtLeast(3), (yc + search).coerceAtMost(h - 4)) ?: yc
+        }
+        val line = medianFilterNullable(fine, radius = max(6, w / 60))
+        return rasterizeLine(w, h, line, config.featherPx, config.marginPx)
+    }
+
+    /** Грубый горизонт в пикселях для каждого столбца (Int.MAX_VALUE - земли нет). */
+    private fun coarseHorizonPerPixel(w: Int, b: Int, horizonBlocks: IntArray, nby: Int): IntArray {
+        val nbx = horizonBlocks.size
+        return IntArray(w) { x ->
+            val fx = (x - b / 2.0) / b
+            val bx0 = fx.toInt().coerceIn(0, nbx - 1)
+            val bx1 = (bx0 + 1).coerceAtMost(nbx - 1)
+            val t = (fx - bx0).coerceIn(0.0, 1.0)
+            val r0 = horizonBlocks[bx0]; val r1 = horizonBlocks[bx1]
+            when {
+                r0 >= nby && r1 >= nby -> Int.MAX_VALUE
+                r0 >= nby -> r1 * b
+                r1 >= nby -> r0 * b
+                else -> ((r0 * (1 - t) + r1 * t) * b).toInt()
+            }
+        }
+    }
+
+    /**
+     * Лучшая граница "сверху одно, снизу другое" в столбце [x] между [y0] и
+     * [y1]: профиль яркости (среднее по 5 столбцам) делится на две части так,
+     * чтобы каждая была как можно однороднее (минимум суммы квадратов
+     * отклонений от своих средних). В отличие от поиска самого резкого
+     * перепада, одиночные огоньки и звёзды почти не влияют на результат.
+     * null - заметной ступеньки нет.
+     */
+    private fun strongestEdge(img: GrayImage, x: Int, y0: Int, y1: Int): Int? {
+        val len = y1 - y0 + 1
+        if (len < 8) return null
+        val w = img.width
+        val xa = (x - 2).coerceAtLeast(0); val xb = (x + 2).coerceAtMost(w - 1)
+        val prefix = DoubleArray(len + 1)
+        val prefixSq = DoubleArray(len + 1)
+        for (k in 0 until len) {
+            var sum = 0.0
+            for (xx in xa..xb) sum += img.data[(y0 + k) * w + xx]
+            val v = sum / (xb - xa + 1)
+            prefix[k + 1] = prefix[k] + v
+            prefixSq[k + 1] = prefixSq[k] + v * v
+        }
+        fun sse(a: Int, b: Int): Double { // [a, b)
+            val n = b - a
+            val s1 = prefix[b] - prefix[a]
+            return (prefixSq[b] - prefixSq[a]) - s1 * s1 / n
+        }
+        val total = sse(0, len)
+        var bestCost = Double.POSITIVE_INFINITY; var bestK = -1
+        for (k in 3..len - 3) {
+            val cost = sse(0, k) + sse(k, len)
+            if (cost < bestCost) { bestCost = cost; bestK = k }
+        }
+        if (bestK < 0) return null
+        val step = abs((prefix[len] - prefix[bestK]) / (len - bestK) - prefix[bestK] / bestK)
+        // Ступенька должна объяснять заметную часть разброса и не быть шумом.
+        return if (bestCost < 0.6 * total && step > 2e-3) y0 + bestK else null
+    }
+
+    private fun medianFilterNullable(values: IntArray, radius: Int): IntArray {
+        val out = IntArray(values.size)
+        val window = ArrayList<Int>(2 * radius + 1)
+        for (i in values.indices) {
+            if (values[i] == Int.MAX_VALUE) { out[i] = Int.MAX_VALUE; continue }
+            window.clear()
+            for (j in max(0, i - radius)..min(values.size - 1, i + radius)) if (values[j] != Int.MAX_VALUE) window.add(values[j])
+            window.sort()
+            out[i] = window[window.size / 2]
+        }
+        return out
+    }
+
+    /** Попиксельный вес земли: 1 ниже линии, плавный переход [featherPx] над ней, линия поднята на [marginPx]. */
+    private fun rasterizeLine(w: Int, h: Int, line: IntArray, featherPx: Int, marginPx: Int): GrayImage {
+        val out = FloatArray(w * h)
+        for (x in 0 until w) {
+            if (line[x] == Int.MAX_VALUE) continue
+            val top = line[x] - marginPx
+            for (y in 0 until h) {
+                out[y * w + x] = when {
+                    y >= top -> 1f
+                    y <= top - featherPx -> 0f
+                    else -> (y - (top - featherPx)).toFloat() / featherPx
+                }
+            }
+        }
+        return GrayImage(w, h, out)
     }
 
     private fun medianFilter(values: IntArray, radius: Int): IntArray {
@@ -139,32 +243,5 @@ object GroundMask {
             out[i] = window[window.size / 2]
         }
         return out
-    }
-
-    /** Горизонт по блокам -> попиксельный вес с линейной интерполяцией между столбцами и плавным переходом высотой в один блок. */
-    private fun rasterize(w: Int, h: Int, b: Int, horizonBlocks: IntArray, nby: Int): GrayImage {
-        val out = FloatArray(w * h)
-        val nbx = horizonBlocks.size
-        for (x in 0 until w) {
-            // Центр столбца блоков bx - в пикселе bx*b + b/2; интерполируем между соседними центрами.
-            val fx = (x - b / 2.0) / b
-            val bx0 = fx.toInt().coerceIn(0, nbx - 1)
-            val bx1 = (bx0 + 1).coerceAtMost(nbx - 1)
-            val t = (fx - bx0).coerceIn(0.0, 1.0)
-            val r0 = horizonBlocks[bx0]
-            val r1 = horizonBlocks[bx1]
-            // Столбец без земли (горизонт на самом низу) не тянет соседей вниз за кадр.
-            val yLine = if (r0 >= nby && r1 >= nby) Double.POSITIVE_INFINITY
-            else ((if (r0 >= nby) r1 else r0) * (1 - t) + (if (r1 >= nby) r0 else r1) * t) * b
-            for (y in 0 until h) {
-                val wgt = when {
-                    y >= yLine -> 1f
-                    y <= yLine - b -> 0f
-                    else -> ((y - (yLine - b)) / b).toFloat()
-                }
-                out[y * w + x] = wgt
-            }
-        }
-        return GrayImage(w, h, out)
     }
 }

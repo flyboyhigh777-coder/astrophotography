@@ -31,6 +31,39 @@ object StackCombiner {
         }
     }
 
+    /**
+     * То же, что [combine], но по первым [count] значениям [buffer] и без
+     * выделения памяти для метода MEAN - вызывается для каждого пикселя
+     * кадра, поэтому важна скорость. Порядок значений в [buffer] не меняется.
+     */
+    fun combinePrefix(buffer: FloatArray, count: Int, config: StackCombinerConfig = StackCombinerConfig()): Float {
+        if (count <= 0) return 0f
+        if (count == 1) return buffer[0]
+        if (config.method != CombineMethod.MEAN) return combine(buffer.copyOf(count), config)
+        var lo = Float.NEGATIVE_INFINITY
+        var hi = Float.POSITIVE_INFINITY
+        var kept = count
+        for (iter in 0 until config.clipIterations) {
+            if (kept < 3) break
+            var sum = 0.0; var n = 0
+            for (i in 0 until count) { val v = buffer[i]; if (v >= lo && v <= hi) { sum += v; n++ } }
+            val mean = sum / n
+            var variance = 0.0
+            for (i in 0 until count) { val v = buffer[i]; if (v >= lo && v <= hi) variance += (v - mean) * (v - mean) }
+            val sd = sqrt(variance / n)
+            if (sd < 1e-9) break
+            val newLo = (mean - config.kappaSigmaClip * sd).toFloat()
+            val newHi = (mean + config.kappaSigmaClip * sd).toFloat()
+            var newKept = 0
+            for (i in 0 until count) { val v = buffer[i]; if (v >= lo && v <= hi && v >= newLo && v <= newHi) newKept++ }
+            if (newKept == 0 || newKept == kept) break
+            lo = maxOf(lo, newLo); hi = minOf(hi, newHi); kept = newKept
+        }
+        var sum = 0.0; var n = 0
+        for (i in 0 until count) { val v = buffer[i]; if (v >= lo && v <= hi) { sum += v; n++ } }
+        return if (n > 0) (sum / n).toFloat() else buffer[0]
+    }
+
     private fun kappaSigmaMean(values: FloatArray, config: StackCombinerConfig): Float {
         var current = values.copyOf()
         repeat(config.clipIterations) {

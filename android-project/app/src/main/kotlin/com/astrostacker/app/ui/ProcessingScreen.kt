@@ -22,7 +22,7 @@ import com.astrostacker.core.Stage
 
 /** Порядок стадий для общего (сквозного по всему пайплайну) прогресс-бара - см. [overallFraction]. */
 private val STAGE_ORDER = listOf(
-    Stage.LOAD, Stage.DETECT_STARS, Stage.REGISTER, Stage.STACK, Stage.GROUND, Stage.DONE
+    Stage.LOAD, Stage.DETECT_STARS, Stage.REGISTER, Stage.GROUND, Stage.STACK, Stage.DONE
 )
 
 @Composable

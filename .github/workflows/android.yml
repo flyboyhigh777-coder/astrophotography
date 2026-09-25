@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: android-project
@@ -35,10 +37,31 @@ jobs:
           path: android-project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+      # Настоящее приложение (Activity + Compose) под Robolectric: проходит
+      # все экраны и снимает скриншоты в app/build/outputs/roborazzi.
+      - name: App UI flow test
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Publish screenshots to ci-screenshots branch
+        if: always() && github.event_name != 'pull_request'
+        working-directory: android-project/app/build
+        run: |
+          [ -d outputs/roborazzi ] || { echo "no screenshots"; exit 0; }
+          mkdir -p publish && cp outputs/roborazzi/*.png publish/ 2>/dev/null || true
+          [ -d reports/tests ] && cp -r reports/tests publish/test-report || true
+          cd publish
+          echo "Screenshots for ${GITHUB_SHA}" > README.md
+          git init -q -b ci-screenshots
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "Screenshots for ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-screenshots
+
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: test-reports
-          path: android-project/core/build/reports/tests/
+          path: |
+            android-project/core/build/reports/tests/
+            android-project/app/build/reports/tests/
           if-no-files-found: ignore

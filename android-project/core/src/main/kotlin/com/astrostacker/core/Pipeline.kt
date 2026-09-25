@@ -2,7 +2,7 @@ package com.astrostacker.core
 
 /** Этап пайплайна для колбэка прогресса — :app привязывает его к UI. */
 /** [LOAD] - чтение и калибровка кадров, выполняется в :app до [Pipeline.run]. */
-enum class Stage { LOAD, DETECT_STARS, REGISTER, STACK, GROUND, DONE }
+enum class Stage { LOAD, DETECT_STARS, REGISTER, GROUND, STACK, DONE }
 
 data class ProgressUpdate(val stage: Stage, val current: Int, val total: Int, val message: String = "")
 
@@ -93,26 +93,43 @@ object Pipeline {
 
         require(stackFrames.size >= 2) { "Слишком мало кадров успешно зарегистрировано (нужно минимум 2)" }
 
-        onProgress(ProgressUpdate(Stage.STACK, 0, 1))
         val reference = frames[refIdx].image
         val width = reference.width
         val height = reference.height
-        val stacked = TiledStacker.stack(width, height, stackFrames, config.combiner)
-        onProgress(ProgressUpdate(Stage.STACK, 1, 1))
 
-        if (!config.freezeGround) {
-            onProgress(ProgressUpdate(Stage.DONE, 1, 1))
-            return PipelineResult(stacked, stacked, null, outcomes, refIdx)
+        // 1. Где земля: сравниваем опорный кадр с совмещённым и несовмещённым
+        //    средним (дешёвые, только яркость).
+        var mask: GrayImage? = null
+        if (config.freezeGround) {
+            onProgress(ProgressUpdate(Stage.GROUND, 0, 1))
+            val staticStack = staticLuminanceMean(stackFrames.map { it.image }, width, height)
+            val alignedStack = SkyStacker.alignedLuminanceMean(stackFrames, width, height)
+            mask = GroundMask.compute(
+                reference.luminance(), alignedStack, staticStack, config.groundMask,
+                maxShiftPx = maxShift(stackFrames, width, height)
+            )
+            onProgress(ProgressUpdate(Stage.GROUND, 1, 1))
         }
 
-        onProgress(ProgressUpdate(Stage.GROUND, 0, 1))
-        val staticStack = staticLuminanceMean(stackFrames.map { it.image }, width, height)
-        val mask = GroundMask.compute(reference.luminance(), stacked.luminance(), staticStack, config.groundMask)
-        val finalImage = blend(stacked, reference, mask)
-        onProgress(ProgressUpdate(Stage.GROUND, 1, 1))
+        // 2. Стек: обычный и "только небо" (без отсчётов, попавших на землю).
+        onProgress(ProgressUpdate(Stage.STACK, 0, 1))
+        val stacks = SkyStacker.stack(stackFrames, reference, mask, config.combiner)
+        onProgress(ProgressUpdate(Stage.STACK, 1, 1))
 
+        // 3. Небо из стека, земля из опорного кадра.
+        val finalImage = if (mask != null) blend(stacks.skyOnly!!, reference, mask) else stacks.all
         onProgress(ProgressUpdate(Stage.DONE, 1, 1))
-        return PipelineResult(stacked, finalImage, mask, outcomes, refIdx)
+        return PipelineResult(stacks.all, finalImage, mask, outcomes, refIdx)
+    }
+
+    /** Наибольшее смещение точки кадра после совмещения (по сетке 3×3 точек). */
+    private fun maxShift(frames: List<StackFrame>, w: Int, h: Int): Double {
+        var best = 0.0
+        for (f in frames) for (gx in 0..2) for (gy in 0..2) {
+            val p = Vec2(gx * (w - 1) / 2.0, gy * (h - 1) / 2.0)
+            best = maxOf(best, f.toReference.apply(p).distanceTo(p))
+        }
+        return best
     }
 
     /**
