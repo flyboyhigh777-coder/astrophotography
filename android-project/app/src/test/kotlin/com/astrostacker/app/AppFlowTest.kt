@@ -15,6 +15,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -64,7 +65,12 @@ class AppFlowTest {
         }
         val file = File(compose.activity.cacheDir, name)
         file.outputStream().use { Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888).compress(Bitmap.CompressFormat.JPEG, 95, it) }
-        return Uri.fromFile(file)
+        // Robolectric не открывает файлы по Uri сам - отдаём ContentResolver'у
+        // свежий поток на каждое открытие (приложение читает файл 3 раза:
+        // размеры, пиксели, EXIF), как это делает настоящий Photo Picker.
+        val uri = Uri.parse("content://com.astrostacker.test/$name")
+        shadowOf(compose.activity.contentResolver).registerInputStreamSupplier(uri) { file.inputStream() }
+        return uri
     }
 
     private fun makeFrames(): Triple<List<Uri>, List<Uri>, List<Uri>> {
@@ -97,8 +103,17 @@ class AppFlowTest {
         return Triple(lightsUris, darks, flats)
     }
 
+    /** Ждёт экран [T]; если приложение вернулось к выбору кадров с ошибкой - падает сразу, со скриншотом и текстом ошибки. */
     private inline fun <reified T : ScreenState> waitFor(vm: ProcessingViewModel, timeoutMs: Long = 180_000) {
-        compose.waitUntil(timeoutMs) { vm.screenState.value is T }
+        compose.waitUntil(timeoutMs) {
+            val s = vm.screenState.value
+            s is T || (s is ScreenState.Picking && s.previousError != null)
+        }
+        val s = vm.screenState.value
+        if (s is ScreenState.Picking && s.previousError != null) {
+            shot("99_error")
+            throw AssertionError("Приложение вернулось к выбору кадров с ошибкой: ${s.previousError}")
+        }
     }
 
     @Test
