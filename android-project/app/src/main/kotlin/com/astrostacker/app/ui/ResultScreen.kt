@@ -191,7 +191,7 @@ fun ResultScreen(
 }
 
 @Composable
-private fun formatLabel(format: ExportFormat): String = when (format) {
+internal fun formatLabel(format: ExportFormat): String = when (format) {
     ExportFormat.TIFF16 -> stringResource(R.string.format_tiff16)
     ExportFormat.PNG -> "PNG"
     ExportFormat.JPEG -> "JPEG"

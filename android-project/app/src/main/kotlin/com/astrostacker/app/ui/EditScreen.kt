@@ -40,7 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.astrostacker.app.R
-import com.astrostacker.app.ScreenState
+import com.astrostacker.app.EditorUiState
 import com.astrostacker.core.CropRect
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -50,7 +50,7 @@ import kotlin.math.min
 /** Экран "Повернуть и обрезать". Вся геометрия - в долях кадра (см. [CropRect]). */
 @Composable
 fun EditScreen(
-    state: ScreenState.Editing,
+    state: EditorUiState,
     onRotateQuarter: (Int) -> Unit,
     onStraighten: (Float) -> Unit,
     onCropChange: (CropRect) -> Unit,

@@ -65,19 +65,8 @@ sealed interface ScreenState {
         val groundFromSeparateFrames: Boolean = false
     ) : ScreenState
 
-    /**
-     * Экран "Повернуть и обрезать". [baseBitmap] - превью уже повёрнутое на
-     * `draft.quarterTurns`; выравнивание горизонта показывается поверх
-     * (graphicsLayer), обрезка - рамкой, до нажатия "Применить" ничего не
-     * пересчитывается. [aspectRatio] - зафиксированные пропорции рамки или null.
-     */
-    data class Editing(
-        val result: Result,
-        val baseBitmap: Bitmap,
-        val draft: EditParams,
-        val aspectRatio: Float? = null,
-        val cropIsAuto: Boolean = true
-    ) : ScreenState
+    /** Экран "Повернуть и обрезать" поверх результата - см. [EditorUiState]. */
+    data class Editing(val result: Result, val editor: EditorUiState) : ScreenState
 }
 
 enum class CalibrationKind { DARK, BIAS, FLAT }
@@ -242,66 +231,34 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
         val current = _screenState.value as? ScreenState.Result ?: return
         viewModelScope.launch {
             val base = withContext(Dispatchers.Default) { renderEditorBase(current.freezeGround, current.edit.quarterTurns) }
-            _screenState.value = ScreenState.Editing(
-                result = current,
-                baseBitmap = base,
-                draft = current.edit,
-                cropIsAuto = current.edit.crop == autoCrop(base, current.edit.straightenDegrees)
-            )
+            _screenState.value = ScreenState.Editing(current, EditorLogic.open(base, current.edit))
         }
     }
 
     fun editorRotateQuarter(delta: Int) {
         val editing = _screenState.value as? ScreenState.Editing ?: return
-        val turns = ((editing.draft.quarterTurns + delta) % 4 + 4) % 4
+        val turns = ((editing.editor.draft.quarterTurns + delta) % 4 + 4) % 4
         viewModelScope.launch {
             val base = withContext(Dispatchers.Default) { renderEditorBase(editing.result.freezeGround, turns) }
-            // Рамка задана в долях от повёрнутого кадра - после поворота на 90° сбрасываем её.
-            val draft = EditParams(quarterTurns = turns, straightenDegrees = editing.draft.straightenDegrees)
-            _screenState.value = editing.copy(
-                baseBitmap = base,
-                draft = draft.copy(crop = autoCrop(base, draft.straightenDegrees)),
-                aspectRatio = null,
-                cropIsAuto = true
-            )
+            _screenState.value = editing.copy(editor = EditorLogic.rotated(base, turns, editing.editor.draft.straightenDegrees))
         }
     }
 
-    fun editorStraighten(degrees: Float) {
-        val editing = _screenState.value as? ScreenState.Editing ?: return
-        val inscribed = autoCrop(editing.baseBitmap, degrees)
-        val crop = when {
-            editing.aspectRatio != null -> fitAspect(editing.baseBitmap, editing.aspectRatio, inscribed)
-            editing.cropIsAuto -> inscribed
-            else -> editing.draft.crop.intersect(inscribed)
-        }
-        _screenState.value = editing.copy(draft = editing.draft.copy(straightenDegrees = degrees, crop = crop))
-    }
-
-    fun editorSetCrop(crop: CropRect) {
-        val editing = _screenState.value as? ScreenState.Editing ?: return
-        _screenState.value = editing.copy(draft = editing.draft.copy(crop = crop.normalized()), cropIsAuto = false)
-    }
-
+    fun editorStraighten(degrees: Float) = updateEditor { EditorLogic.straighten(it, degrees) }
+    fun editorSetCrop(crop: CropRect) = updateEditor { EditorLogic.setCrop(it, crop) }
     /** [ratio] = ширина/высота рамки; null - свободная рамка; 0 - пропорции исходного кадра. */
-    fun editorSetAspect(ratio: Float?) {
+    fun editorSetAspect(ratio: Float?) = updateEditor { EditorLogic.setAspect(it, ratio) }
+
+    private fun updateEditor(change: (EditorUiState) -> EditorUiState) {
         val editing = _screenState.value as? ScreenState.Editing ?: return
-        val base = editing.baseBitmap
-        val resolved = if (ratio == 0f) base.width.toFloat() / base.height else ratio
-        val inscribed = autoCrop(base, editing.draft.straightenDegrees)
-        val crop = if (resolved == null) editing.draft.crop else fitAspect(base, resolved, inscribed)
-        _screenState.value = editing.copy(
-            draft = editing.draft.copy(crop = crop),
-            aspectRatio = resolved,
-            cropIsAuto = resolved == null && editing.cropIsAuto
-        )
+        _screenState.value = editing.copy(editor = change(editing.editor))
     }
 
     fun editorReset() {
         val editing = _screenState.value as? ScreenState.Editing ?: return
         viewModelScope.launch {
             val base = withContext(Dispatchers.Default) { renderEditorBase(editing.result.freezeGround, 0) }
-            _screenState.value = editing.copy(baseBitmap = base, draft = EditParams(), aspectRatio = null, cropIsAuto = true)
+            _screenState.value = editing.copy(editor = EditorUiState(base, EditParams()))
         }
     }
 
@@ -313,8 +270,9 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
     fun editorApply() {
         val editing = _screenState.value as? ScreenState.Editing ?: return
         viewModelScope.launch {
-            val preview = withContext(Dispatchers.Default) { renderPreview(editing.result.freezeGround, editing.draft) }
-            _screenState.value = editing.result.copy(edit = editing.draft, previewBitmap = preview, saveState = SaveState.Idle)
+            val draft = editing.editor.draft
+            val preview = withContext(Dispatchers.Default) { renderPreview(editing.result.freezeGround, draft) }
+            _screenState.value = editing.result.copy(edit = draft, previewBitmap = preview, saveState = SaveState.Idle)
         }
     }
 
@@ -359,20 +317,6 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
 
     private fun renderEditorBase(freezeGround: Boolean, quarterTurns: Int): Bitmap =
         ImageDecoding.rgb16ToBitmap(previewSource(freezeGround).rotateQuarterTurns(quarterTurns))
-
-    private fun autoCrop(base: Bitmap, degrees: Float): CropRect = EditParams.inscribedCrop(base.width, base.height, degrees)
-
-    /** Наибольшая рамка с пропорциями [ratio] (ширина/высота в пикселях) по центру внутри [bounds]. */
-    private fun fitAspect(base: Bitmap, ratio: Float, bounds: CropRect): CropRect {
-        val bw = (bounds.right - bounds.left) * base.width
-        val bh = (bounds.bottom - bounds.top) * base.height
-        val (w, h) = if (bw / bh > ratio) (bh * ratio) to bh else bw to (bw / ratio)
-        val cx = (bounds.left + bounds.right) / 2f
-        val cy = (bounds.top + bounds.bottom) / 2f
-        val nw = w / base.width / 2f
-        val nh = h / base.height / 2f
-        return CropRect(cx - nw, cy - nh, cx + nw, cy + nh)
-    }
 
     private companion object {
         const val PREVIEW_MAX_SIDE = 1600

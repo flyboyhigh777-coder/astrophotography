@@ -51,7 +51,7 @@ fun AstroStackerRoot(viewModel: ProcessingViewModel) {
                 onReset = viewModel::reset
             )
             is ScreenState.Editing -> EditScreen(
-                state = current,
+                state = current.editor,
                 onRotateQuarter = viewModel::editorRotateQuarter,
                 onStraighten = viewModel::editorStraighten,
                 onCropChange = viewModel::editorSetCrop,

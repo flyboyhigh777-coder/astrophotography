@@ -72,4 +72,33 @@
     <string name="picker_ground_hint">Снимки пейзажа с того же штатива, не сдвигая камеру — например, с более длинной выдержкой или низким ISO для чистого переднего плана. Если не выбраны, земля складывается из первых 5 кадров серии.</string>
     <string name="result_ground_from_series">Земля: стек из %1$d кадров серии, без совмещения по звёздам</string>
     <string name="result_ground_from_separate">Земля: стек из %1$d отдельных снимков земли</string>
+
+    <!-- Панорама -->
+    <string name="tab_astro">Астро</string>
+    <string name="tab_panorama">Панорама</string>
+    <string name="pano_title">Панорама</string>
+    <string name="pano_instructions">Выберите 2 и больше фото, снятых по кругу с одной точки, с перекрытием 20–30% между соседними кадрами. Порядок не важен, можно несколько рядов (вверх-вниз) — приложение само найдёт, как они стыкуются.</string>
+    <string name="pano_select_photos">Выбрать фото</string>
+    <string name="pano_tips_title">Как снимать</string>
+    <string name="pano_tips">• Поворачивайте камеру вокруг объектива, а не вокруг себя — иначе близкие предметы "поедут" на стыках (параллакс). Лучше всего — штатив.\n• Перекрытие 25–30% с соседним кадром, для нескольких рядов — треть и по вертикали.\n• Ручная экспозиция, баланс белого и фокус — одинаковые для всех кадров.\n• Не меняйте зум между кадрами. Движущиеся люди и машины на стыках могут раздвоиться.</string>
+    <string name="pano_min_photos">Нужно выбрать хотя бы 2 фото</string>
+    <string name="pano_start">Склеить панораму</string>
+    <string name="pano_processing_title">Склейка панорамы</string>
+    <string name="pano_stage_load">Чтение фото</string>
+    <string name="pano_stage_features">Поиск особых точек</string>
+    <string name="pano_stage_match">Сопоставление фото</string>
+    <string name="pano_stage_align">Совмещение и выпрямление горизонта</string>
+    <string name="pano_stage_render">Сборка панорамы</string>
+    <string name="pano_result_title">Панорама</string>
+    <string name="pano_result_info">Склеено фото: %1$d из %2$d · охват %3$d° × %4$d°</string>
+    <string name="pano_result_size">Размер файла: %1$d × %2$d пикс. (%3$.1f Мп)</string>
+    <string name="pano_result_skipped">Фото без перекрытия с остальными: %1$d — не вошли в панораму.</string>
+    <string name="pano_projection">Проекция</string>
+    <string name="pano_projection_planar">Плоская</string>
+    <string name="pano_projection_cylindrical">Цилиндр</string>
+    <string name="pano_projection_spherical">Сфера</string>
+    <string name="pano_projection_hint">Плоская — прямые линии остаются прямыми (до ~90°). Цилиндр — широкие горизонтальные панорамы до 360°. Сфера — несколько рядов и большой охват по вертикали.</string>
+    <string name="pano_rendering">Пересборка панорамы…</string>
+    <string name="pano_autocrop">Обрезать пустые края</string>
+    <string name="pano_autocrop_hint">Убирает неровные чёрные края по периметру — остаётся наибольший прямоугольник без пустот.</string>
 </resources>

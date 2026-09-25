@@ -68,4 +68,33 @@
     <string name="picker_ground_hint">Landscape shots from the same tripod without moving the camera, e.g. with a longer exposure or lower ISO for a clean foreground. If none are selected, the ground is stacked from the first 5 frames of the series.</string>
     <string name="result_ground_from_series">Ground: stack of %1$d series frames, not aligned on stars</string>
     <string name="result_ground_from_separate">Ground: stack of %1$d separate ground shots</string>
+
+    <!-- Панорама -->
+    <string name="tab_astro">Astro</string>
+    <string name="tab_panorama">Panorama</string>
+    <string name="pano_title">Panorama</string>
+    <string name="pano_instructions">Pick 2 or more photos taken around one point with 20–30% overlap between neighbours. Order does not matter, and several rows (up/down) are fine — the app figures out how they fit together.</string>
+    <string name="pano_select_photos">Select photos</string>
+    <string name="pano_tips_title">How to shoot</string>
+    <string name="pano_tips">• Rotate the camera around the lens, not around yourself — otherwise nearby objects shift at the seams (parallax). A tripod is best.\n• 25–30% overlap with the neighbouring frame; for several rows, a third vertically too.\n• Manual exposure, white balance and focus — the same for all frames.\n• Do not change zoom between frames. Moving people and cars at the seams may double.</string>
+    <string name="pano_min_photos">Select at least 2 photos</string>
+    <string name="pano_start">Stitch panorama</string>
+    <string name="pano_processing_title">Stitching panorama</string>
+    <string name="pano_stage_load">Reading photos</string>
+    <string name="pano_stage_features">Finding key points</string>
+    <string name="pano_stage_match">Matching photos</string>
+    <string name="pano_stage_align">Aligning and levelling the horizon</string>
+    <string name="pano_stage_render">Building the panorama</string>
+    <string name="pano_result_title">Panorama</string>
+    <string name="pano_result_info">Stitched photos: %1$d of %2$d · coverage %3$d° × %4$d°</string>
+    <string name="pano_result_size">File size: %1$d × %2$d px (%3$.1f MP)</string>
+    <string name="pano_result_skipped">Photos with no overlap with the rest: %1$d — left out.</string>
+    <string name="pano_projection">Projection</string>
+    <string name="pano_projection_planar">Flat</string>
+    <string name="pano_projection_cylindrical">Cylinder</string>
+    <string name="pano_projection_spherical">Sphere</string>
+    <string name="pano_projection_hint">Flat keeps straight lines straight (up to ~90°). Cylinder suits wide horizontal panoramas up to 360°. Sphere suits several rows and large vertical coverage.</string>
+    <string name="pano_rendering">Rebuilding panorama…</string>
+    <string name="pano_autocrop">Crop empty edges</string>
+    <string name="pano_autocrop_hint">Removes the uneven black border — keeps the largest rectangle without gaps.</string>
 </resources>

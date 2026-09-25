@@ -9,6 +9,7 @@ import androidx.exifinterface.media.ExifInterface
 import com.astrostacker.core.ColorSpace
 import com.astrostacker.core.FloatImage
 import com.astrostacker.core.Rgb16Image
+import com.astrostacker.core.pano.PanoImage
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -74,6 +75,44 @@ object ImageDecoding {
             pixels[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
         }
         return Bitmap.createBitmap(pixels, image.width, image.height, Bitmap.Config.ARGB_8888)
+    }
+
+    /**
+     * Фото для панорамы: 8-битный кадр с учётом поворота из EXIF (телефоны
+     * хранят вертикальные снимки "лёжа" + флаг ориентации) и эквивалентным
+     * фокусным расстоянием из EXIF - начальное значение для склейки.
+     * null - файл не удалось прочитать.
+     */
+    fun decodePanoImage(context: Context, uri: Uri, maxPixels: Long): PanoImage? {
+        val bitmap = decodeBitmap(context, uri, maxPixels) ?: return null
+        var orientation = ExifInterface.ORIENTATION_NORMAL
+        var focal35: Double? = null
+        try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val exif = ExifInterface(stream)
+                orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+                focal35 = exif.getAttributeInt(ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM, 0).takeIf { it > 0 }?.toDouble()
+            }
+        } catch (e: Exception) {
+            // Без EXIF - обычная ориентация, фокусное определит сама склейка.
+        }
+        val degrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        val upright = if (degrees != 0f) {
+            val m = android.graphics.Matrix().apply { postRotate(degrees) }
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, m, true).also { if (it !== bitmap) bitmap.recycle() }
+        } else bitmap
+        return try {
+            val px = IntArray(upright.width * upright.height)
+            upright.getPixels(px, 0, upright.width, 0, 0, upright.width, upright.height)
+            PanoImage(upright.width, upright.height, px, focal35)
+        } finally {
+            upright.recycle()
+        }
     }
 
     /** 16-битный результат -> `Bitmap` (8 бит) для показа на экране. */

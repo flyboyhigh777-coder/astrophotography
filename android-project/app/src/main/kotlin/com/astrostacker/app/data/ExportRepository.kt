@@ -40,8 +40,8 @@ object ExportRepository {
     private const val RELATIVE_DIR = "AstroStacker"
     private const val JPEG_QUALITY = 100
 
-    fun save(context: Context, image: Rgb16Image, format: ExportFormat): Boolean {
-        val displayName = "astrostacker_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + "." + format.extension
+    fun save(context: Context, image: Rgb16Image, format: ExportFormat, namePrefix: String = "astrostacker"): Boolean {
+        val displayName = namePrefix + "_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + "." + format.extension
         val writer: (OutputStream) -> Unit = when (format) {
             ExportFormat.TIFF16 -> { out -> TiffWriter.write(out, image) }
             ExportFormat.PNG -> { out -> compress(image, Bitmap.CompressFormat.PNG, 100, out) }
