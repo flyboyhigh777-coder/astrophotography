@@ -81,9 +81,7 @@ object ExifWriter {
                 summary.cameraModel?.let { exif.setAttribute(ExifInterface.TAG_MODEL, it) }
                 summary.isoMax?.let { exif.setAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY, it.toString()) }
                 if (summary.totalExposureSeconds > 0) {
-                    // Рациональная дробь с точностью до миллисекунды - однозначный формат для любого EXIF-ридера.
-                    val millis = (summary.totalExposureSeconds * 1000).roundToLong().coerceAtLeast(1)
-                    exif.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, "$millis/1000")
+                    exif.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, formatExposureAttribute(summary.totalExposureSeconds))
                 }
                 summary.lastEpochSeconds?.let { epoch ->
                     val format2 = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
@@ -97,5 +95,21 @@ object ExifWriter {
         } catch (e: Exception) {
             // Необязательные метаданные - файл всё равно сохранён, молча пропускаем.
         }
+    }
+
+    /**
+     * androidx.exifinterface хочет для ExposureTime десятичную СТРОКУ ("20", "20.5"),
+     * а НЕ "числитель/знаменатель" - формат "N/D" молча отвергается setAttribute
+     * (проверено эмпирически: getAttribute потом возвращает null, ещё до сохранения
+     * файла). Строим строку вручную через Long, чтобы не зависеть от локали
+     * десятичного разделителя (String.format/toString с текущей локалью в некоторых
+     * языках используют запятую).
+     */
+    private fun formatExposureAttribute(seconds: Double): String {
+        val millis = (seconds * 1000).roundToLong().coerceAtLeast(1)
+        val whole = millis / 1000
+        val frac = millis % 1000
+        if (frac == 0L) return whole.toString()
+        return "$whole." + frac.toString().padStart(3, '0').trimEnd('0')
     }
 }

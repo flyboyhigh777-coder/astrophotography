@@ -103,19 +103,12 @@ class TrailFlowTest {
         exif.setAttribute(ExifInterface.TAG_MAKE, "TestCam")
         exif.setAttribute(ExifInterface.TAG_MODEL, "Trail9000")
         exif.setAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY, iso.toString())
-        exif.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, "20/1")
+        // androidx.exifinterface хочет для ExposureTime десятичную строку ("20", "20.0"),
+        // а НЕ "числитель/знаменатель" - формат "20/1" молча отвергается setAttribute
+        // (getAttribute потом возвращает null) ещё до сохранения/перечитывания файла.
+        exif.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, "20")
         if (withGps) exif.setLatLong(51.5, -0.1)
         exif.saveAttributes()
-
-        if (name == "trail_0.jpg") {
-            for (candidate in listOf("20/1", "20", "20.0", "20000/1000")) {
-                val probeFile = File(compose.activity.cacheDir, "probe_${candidate.replace('/', '_').replace('.', '_')}.jpg")
-                file.copyTo(probeFile, overwrite = true)
-                val probe = ExifInterface(probeFile.path)
-                probe.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, candidate)
-                println("EXIFDEBUG candidate='$candidate' getAttribute=${probe.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${probe.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
-            }
-        }
 
         val uri = Uri.parse("content://com.astrostacker.test/$name")
         shadowOf(compose.activity.contentResolver).registerInputStreamSupplier(uri) { file.inputStream() }
