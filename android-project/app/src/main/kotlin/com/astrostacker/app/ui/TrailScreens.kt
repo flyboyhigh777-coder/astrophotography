@@ -8,6 +8,9 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -44,13 +48,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.astrostacker.app.R
 import com.astrostacker.app.SaveState
@@ -336,9 +343,9 @@ private fun TrailOptionsScreen(initial: StarTrailConfig, onApply: (StarTrailConf
             }
 
             Text(stringResource(R.string.trail_style_title), style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 for (style in TrailStyle.values()) {
-                    ChoiceChip(trailStyleLabel(style), draft.style == style) { draft = draft.copy(style = style) }
+                    TrailStyleCard(style, draft.style == style) { draft = draft.copy(style = style) }
                 }
             }
             Text(trailStyleHint(draft.style), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -373,6 +380,59 @@ private fun TrailOptionsScreen(initial: StarTrailConfig, onApply: (StarTrailConf
 @Composable
 private fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
     if (selected) Button(onClick = onClick) { Text(label) } else OutlinedButton(onClick = onClick) { Text(label) }
+}
+
+/**
+ * Карточка стиля трека: вместо голого текстового чипа - маленькая
+ * мини-иллюстрация самого эффекта (точки вдоль дуги с той же яркостью,
+ * что даст [drawTrailStylePreview] на настоящем треке), чтобы стиль было
+ * видно, а не только читаемо.
+ */
+@Composable
+private fun TrailStyleCard(style: TrailStyle, selected: Boolean, onClick: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val background = if (selected) accent.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+    val border = if (selected) accent else MaterialTheme.colorScheme.outlineVariant
+    Column(
+        modifier = Modifier
+            .width(108.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(background)
+            .border(1.5.dp, border, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Canvas(Modifier.size(width = 76.dp, height = 40.dp)) { drawTrailStylePreview(style, accent) }
+        Text(
+            trailStyleLabel(style),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) accent else MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/** Ряд точек вдоль дуги с яркостью/размером по кривой стиля - та же логика веса, что и в `StarTrail.weightAndScale`, упрощённо для превью. */
+private fun DrawScope.drawTrailStylePreview(style: TrailStyle, accent: Color) {
+    val dots = 7
+    val w = size.width; val h = size.height
+    for (i in 0 until dots) {
+        val t = i / (dots - 1).toFloat()
+        val x = 6f + t * (w - 12f)
+        val y = h - 6f - (kotlin.math.sin(t * Math.PI).toFloat()) * (h - 12f)
+        val isHead = style == TrailStyle.SHOOTING_STAR && i == dots - 1
+        val weight = when (style) {
+            TrailStyle.FULL -> 1f
+            TrailStyle.FADE -> 0.25f + 0.75f * t
+            TrailStyle.SHOOTING_STAR -> 0.25f + 0.75f * t
+            TrailStyle.JAVELIN -> 0.3f + 0.7f * (1f - kotlin.math.abs(t - 0.5f) * 2f)
+        }
+        val radius = (2f + weight * 2.4f) * (if (isHead) 1.7f else 1f)
+        if (isHead) drawCircle(accent.copy(alpha = 0.35f), radius = radius * 2.3f, center = Offset(x, y))
+        drawCircle(Color.White.copy(alpha = 0.35f + weight * 0.65f), radius = radius, center = Offset(x, y))
+    }
 }
 
 @Composable
