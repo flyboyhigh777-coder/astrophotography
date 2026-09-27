@@ -108,12 +108,12 @@ class TrailFlowTest {
         exif.saveAttributes()
 
         if (name == "trail_0.jpg") {
-            println("EXIFDEBUG same-instance getAttribute=${exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${exif.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
-            val reopenedByPath = ExifInterface(file.path)
-            println("EXIFDEBUG reopened-by-path getAttribute=${reopenedByPath.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${reopenedByPath.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
-            file.inputStream().use { stream ->
-                val reopenedByStream = ExifInterface(stream)
-                println("EXIFDEBUG reopened-by-stream getAttribute=${reopenedByStream.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${reopenedByStream.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
+            for (candidate in listOf("20/1", "20", "20.0", "20000/1000")) {
+                val probeFile = File(compose.activity.cacheDir, "probe_${candidate.replace('/', '_').replace('.', '_')}.jpg")
+                file.copyTo(probeFile, overwrite = true)
+                val probe = ExifInterface(probeFile.path)
+                probe.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, candidate)
+                println("EXIFDEBUG candidate='$candidate' getAttribute=${probe.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${probe.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
             }
         }
 
