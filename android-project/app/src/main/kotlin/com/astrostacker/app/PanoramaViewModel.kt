@@ -251,7 +251,7 @@ class PanoramaViewModel(application: Application) : AndroidViewModel(application
             val ok = try {
                 withContext(Dispatchers.IO) {
                     val edited = current.edit.applyTo(sourceCrop(image, current.autoCropEnabled))
-                    ExportRepository.save(getApplication(), edited, current.exportFormat, namePrefix = "panorama")
+                    ExportRepository.save(getApplication(), edited, current.exportFormat, namePrefix = "panorama").success
                 }
             } catch (e: OutOfMemoryError) {
                 false

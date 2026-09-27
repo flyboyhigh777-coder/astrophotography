@@ -29,19 +29,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.astrostacker.app.ui.AstroStackerRoot
 import com.astrostacker.app.ui.PanoramaRoot
+import com.astrostacker.app.ui.TrailRoot
 import com.astrostacker.app.ui.theme.AstroStackerTheme
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Единственная Activity. Две независимые вкладки внизу: "Астро" (стекинг
- * ночного неба) и "Панорама" (склейка панорам) - у каждой свой ViewModel,
- * поэтому переключение вкладок не теряет состояние другой.
+ * Единственная Activity. Три независимые вкладки внизу: "Астро" (стекинг
+ * ночного неба, звёзды точками), "Панорама" (склейка панорам) и "Треки"
+ * (звёздные треки - кадры НЕ совмещаются, вращение неба само рисует дуги) -
+ * у каждой свой ViewModel, поэтому переключение вкладок не теряет состояние
+ * остальных.
  */
 class MainActivity : ComponentActivity() {
 
     private val astroViewModel: ProcessingViewModel by viewModels()
     private val panoramaViewModel: PanoramaViewModel by viewModels()
+    private val trailViewModel: StarTrailViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,7 +61,8 @@ class MainActivity : ComponentActivity() {
                         Box(Modifier.weight(1f)) {
                             when (tab) {
                                 0 -> AstroStackerRoot(astroViewModel)
-                                else -> PanoramaRoot(panoramaViewModel)
+                                1 -> PanoramaRoot(panoramaViewModel)
+                                else -> TrailRoot(trailViewModel)
                             }
                         }
                         NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
@@ -72,6 +77,12 @@ class MainActivity : ComponentActivity() {
                                 onClick = { tab = 1 },
                                 icon = { PanoramaIcon() },
                                 label = { Text(stringResource(R.string.tab_panorama)) }
+                            )
+                            NavigationBarItem(
+                                selected = tab == 2,
+                                onClick = { tab = 2 },
+                                icon = { TrailIcon() },
+                                label = { Text(stringResource(R.string.tab_trails)) }
                             )
                         }
                     }
@@ -111,5 +122,20 @@ private fun PanoramaIcon() {
             lineTo(w * 0.68f, h * 0.45f); lineTo(w * 0.88f, h * 0.68f)
         }
         drawPath(m, color, style = Stroke(stroke))
+    }
+}
+
+@Composable
+private fun TrailIcon() {
+    val color = LocalContentColor.current
+    Canvas(Modifier.size(24.dp)) {
+        val w = size.width; val h = size.height
+        val stroke = 2.dp.toPx()
+        // Дуга (звёздный трек) вокруг маленькой неподвижной точки (полюс).
+        val arc = Path().apply {
+            addArc(androidx.compose.ui.geometry.Rect(w * 0.12f, h * 0.08f, w * 0.88f, h * 0.84f), startAngleDegrees = -150f, sweepAngleDegrees = 210f)
+        }
+        drawPath(arc, color, style = Stroke(stroke))
+        drawCircle(color, radius = 2.dp.toPx(), center = Offset(w / 2, h * 0.46f))
     }
 }

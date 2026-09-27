@@ -286,7 +286,7 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
             val success = try {
                 withContext(Dispatchers.IO) {
                     val edited = current.edit.applyTo(full)
-                    ExportRepository.save(getApplication<Application>(), edited, current.exportFormat)
+                    ExportRepository.save(getApplication<Application>(), edited, current.exportFormat).success
                 }
             } catch (e: OutOfMemoryError) {
                 false

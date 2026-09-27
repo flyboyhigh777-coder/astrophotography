@@ -24,6 +24,13 @@ enum class ExportFormat(val extension: String, val mimeType: String) {
     JPEG("jpg", "image/jpeg")
 }
 
+/** [uri] - куда реально сохранился файл (для записи EXIF поверх, см. `ExifWriter`); null при неудаче. */
+data class ExportResult(val success: Boolean, val uri: Uri?) {
+    companion object {
+        val FAILED = ExportResult(false, null)
+    }
+}
+
 /**
  * Сохранение результата в `Pictures/AstroStacker` через `MediaStore`.
  *
@@ -40,20 +47,22 @@ object ExportRepository {
     private const val RELATIVE_DIR = "AstroStacker"
     private const val JPEG_QUALITY = 100
 
-    fun save(context: Context, image: Rgb16Image, format: ExportFormat, namePrefix: String = "astrostacker"): Boolean {
+    fun save(context: Context, image: Rgb16Image, format: ExportFormat, namePrefix: String = "astrostacker"): ExportResult {
         val displayName = namePrefix + "_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + "." + format.extension
         val writer: (OutputStream) -> Unit = when (format) {
             ExportFormat.TIFF16 -> { out -> TiffWriter.write(out, image) }
             ExportFormat.PNG -> { out -> compress(image, Bitmap.CompressFormat.PNG, 100, out) }
             ExportFormat.JPEG -> { out -> compress(image, Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out) }
         }
-        if (saveTo(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, Environment.DIRECTORY_PICTURES, displayName, format.mimeType, writer)) {
-            return true
+        saveTo(context, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, Environment.DIRECTORY_PICTURES, displayName, format.mimeType, writer)?.let {
+            return ExportResult(true, it)
         }
         if (format == ExportFormat.TIFF16 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            return saveTo(context, MediaStore.Downloads.EXTERNAL_CONTENT_URI, Environment.DIRECTORY_DOWNLOADS, displayName, format.mimeType, writer)
+            saveTo(context, MediaStore.Downloads.EXTERNAL_CONTENT_URI, Environment.DIRECTORY_DOWNLOADS, displayName, format.mimeType, writer)?.let {
+                return ExportResult(true, it)
+            }
         }
-        return false
+        return ExportResult.FAILED
     }
 
     private fun compress(image: Rgb16Image, format: Bitmap.CompressFormat, quality: Int, out: OutputStream) {
@@ -72,7 +81,7 @@ object ExportRepository {
         displayName: String,
         mimeType: String,
         writer: (OutputStream) -> Unit
-    ): Boolean {
+    ): Uri? {
         val resolver = context.contentResolver
         val scoped = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         val values = ContentValues().apply {
@@ -88,7 +97,7 @@ object ExportRepository {
             resolver.insert(collection, values)
         } catch (e: Exception) {
             null
-        } ?: return false
+        } ?: return null
 
         val wrote = try {
             resolver.openOutputStream(uri)?.use { writer(it); true } ?: false
@@ -98,11 +107,11 @@ object ExportRepository {
         if (!wrote) {
             // Не оставляем "призрачную" недописанную запись.
             resolver.delete(uri, null, null)
-            return false
+            return null
         }
         if (scoped) {
             resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
         }
-        return true
+        return uri
     }
 }

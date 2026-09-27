@@ -208,6 +208,38 @@ object ImageDecoding {
         }
     }
 
+    /**
+     * Метаданные кадра из EXIF, помимо времени съёмки - камера, ISO,
+     * выдержка, координаты. Все поля необязательны (RAW-конвертации,
+     * повторно пересохранённые файлы или обрезанные кадры часто теряют
+     * часть EXIF) - используется для звёздных треков (см.
+     * `StarTrailViewModel` и `FrameMetadata.kt`), где показывается сводка по
+     * всей серии и она же пишется в EXIF сохранённого результата.
+     */
+    fun readFrameExif(context: Context, uri: Uri): FrameExif {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                val exif = ExifInterface(stream)
+                val dateStr = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+                    ?: exif.getAttribute(ExifInterface.TAG_DATETIME)
+                val subSec = exif.getAttribute(ExifInterface.TAG_SUBSEC_TIME_ORIGINAL)
+                    ?: exif.getAttribute(ExifInterface.TAG_SUBSEC_TIME)
+                val latLong = exif.latLong
+                FrameExif(
+                    epochSeconds = dateStr?.let { parseExifDateTime(it, subSec) },
+                    cameraMake = exif.getAttribute(ExifInterface.TAG_MAKE)?.trim()?.takeIf { it.isNotEmpty() },
+                    cameraModel = exif.getAttribute(ExifInterface.TAG_MODEL)?.trim()?.takeIf { it.isNotEmpty() },
+                    iso = exif.getAttributeInt(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY, -1).takeIf { it > 0 },
+                    exposureSeconds = exif.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0).takeIf { it > 0 },
+                    latitude = latLong?.get(0),
+                    longitude = latLong?.get(1)
+                )
+            } ?: FrameExif()
+        } catch (e: Exception) {
+            FrameExif()
+        }
+    }
+
     private fun parseExifDateTime(dateStr: String, subSec: String?): Double? {
         return try {
             val format = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
