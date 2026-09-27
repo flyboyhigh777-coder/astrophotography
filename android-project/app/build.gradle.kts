@@ -55,6 +55,23 @@ android {
             it.maxHeapSize = "3g"
             it.systemProperty("robolectric.graphicsMode", "NATIVE")
             it.systemProperty("roborazzi.test.record", "true")
+            // androidx.core.content.FileProvider кеширует стратегию поиска файла по
+            // authority в СТАТИЧЕСКОМ поле на весь процесс JVM. По умолчанию Gradle
+            // гоняет все тестовые классы в одном воркере - если один Robolectric-тест
+            // с камерой (Panorama) отработает первым, следующий такой тест (Trail) в
+            // том же JVM получит чужой закэшированный root (свой временный cacheDir у
+            // каждого теста разный) и упадёт с "Failed to find configured root".
+            // Свежий JVM на каждый тестовый класс сбрасывает этот кеш.
+            it.forkEvery = 1
+            // Robolectric эмулирует ParcelFileDescriptor через рефлексию в приватное
+            // поле FileDescriptor.fd (нужно при записи через openOutputStream в Uri от
+            // FileProvider - см. TrailFlowTest). На JDK 17 модуль java.base закрывает
+            // internals по умолчанию - без --add-opens падает с InaccessibleObjectException.
+            it.jvmArgs(
+                "--add-opens=java.base/java.io=ALL-UNNAMED",
+                "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                "--add-opens=java.base/java.util=ALL-UNNAMED"
+            )
             it.testLogging {
                 events("passed", "failed")
                 showStandardStreams = true

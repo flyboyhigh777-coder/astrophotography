@@ -103,7 +103,10 @@ class TrailFlowTest {
         exif.setAttribute(ExifInterface.TAG_MAKE, "TestCam")
         exif.setAttribute(ExifInterface.TAG_MODEL, "Trail9000")
         exif.setAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY, iso.toString())
-        exif.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, "20/1")
+        // androidx.exifinterface хочет для ExposureTime десятичную строку ("20", "20.0"),
+        // а НЕ "числитель/знаменатель" - формат "20/1" молча отвергается setAttribute
+        // (getAttribute потом возвращает null) ещё до сохранения/перечитывания файла.
+        exif.setAttribute(ExifInterface.TAG_EXPOSURE_TIME, "20")
         if (withGps) exif.setLatLong(51.5, -0.1)
         exif.saveAttributes()
 
@@ -180,12 +183,14 @@ class TrailFlowTest {
         pump()
         val started = shadowOf(compose.activity).nextStartedActivityForResult ?: throw AssertionError("камера не запустилась")
         // Пишем реальный JPEG туда, куда системная камера записала бы снимок -
-        // единственный файл, только что созданный в cacheDir/camera_frames/
-        // (см. newCameraFrameUri в CameraCapture.kt).
-        val dir = File(compose.activity.cacheDir, "camera_frames")
-        val actualFile = dir.listFiles()?.maxByOrNull { it.lastModified() } ?: error("камера не создала файл")
+        // в Uri из EXTRA_OUTPUT запущенного intent'а (тот же приём, что и в
+        // PanoramaFlowTest: newCameraFrameUri создаёт только папку, а не сам
+        // файл - его должен создать тот, кто в него пишет, как и настоящая
+        // камера через FileProvider).
+        @Suppress("DEPRECATION")
+        val outputUri = started.intent.getParcelableExtra<Uri>(android.provider.MediaStore.EXTRA_OUTPUT)!!
         val bmp = Bitmap.createBitmap(renderFrame(w / 2.0, 40.0), w, h, Bitmap.Config.ARGB_8888)
-        actualFile.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 95, it) }
+        compose.activity.contentResolver.openOutputStream(outputUri)!!.use { bmp.compress(Bitmap.CompressFormat.JPEG, 95, it) }
         shadowOf(compose.activity).receiveResult(started.intent, android.app.Activity.RESULT_OK, null)
         pumpUntil(120_000, "пересборка после добавления кадра") {
             val s = vm.state.value
