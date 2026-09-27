@@ -107,6 +107,16 @@ class TrailFlowTest {
         if (withGps) exif.setLatLong(51.5, -0.1)
         exif.saveAttributes()
 
+        if (name == "trail_0.jpg") {
+            println("EXIFDEBUG same-instance getAttribute=${exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${exif.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
+            val reopenedByPath = ExifInterface(file.path)
+            println("EXIFDEBUG reopened-by-path getAttribute=${reopenedByPath.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${reopenedByPath.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
+            file.inputStream().use { stream ->
+                val reopenedByStream = ExifInterface(stream)
+                println("EXIFDEBUG reopened-by-stream getAttribute=${reopenedByStream.getAttribute(ExifInterface.TAG_EXPOSURE_TIME)} getAttributeDouble=${reopenedByStream.getAttributeDouble(ExifInterface.TAG_EXPOSURE_TIME, -1.0)}")
+            }
+        }
+
         val uri = Uri.parse("content://com.astrostacker.test/$name")
         shadowOf(compose.activity.contentResolver).registerInputStreamSupplier(uri) { file.inputStream() }
         return uri
