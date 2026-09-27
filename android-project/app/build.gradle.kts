@@ -55,6 +55,14 @@ android {
             it.maxHeapSize = "3g"
             it.systemProperty("robolectric.graphicsMode", "NATIVE")
             it.systemProperty("roborazzi.test.record", "true")
+            // androidx.core.content.FileProvider кеширует стратегию поиска файла по
+            // authority в СТАТИЧЕСКОМ поле на весь процесс JVM. По умолчанию Gradle
+            // гоняет все тестовые классы в одном воркере - если один Robolectric-тест
+            // с камерой (Panorama) отработает первым, следующий такой тест (Trail) в
+            // том же JVM получит чужой закэшированный root (свой временный cacheDir у
+            // каждого теста разный) и упадёт с "Failed to find configured root".
+            // Свежий JVM на каждый тестовый класс сбрасывает этот кеш.
+            it.forkEvery = 1
             it.testLogging {
                 events("passed", "failed")
                 showStandardStreams = true
