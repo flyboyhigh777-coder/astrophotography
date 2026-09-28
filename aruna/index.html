@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Аруна — джйотиш, шастры и наставник, который знает ваше небо</title>
+<meta name="description" content="Аруна строит сидерическую карту по дате, времени и месту рождения — и дальше день, отношения, стих писания и ответ наставника считаются от вашей лагны, а не от месяца рождения.">
+<meta name="theme-color" content="#080b16">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Аруна — джйотиш, шастры и наставник, который знает ваше небо">
+<meta property="og:description" content="Карта строится один раз. Дальше день, пара и разговор считаются от неё.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..600;1,400&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/charts.css">
+<link rel="stylesheet" href="assets/css/landing.css">
+</head>
+<body>
+<a class="visually-hidden" href="#main">Перейти к содержанию</a>
+
+<header class="header" id="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="index.html" aria-label="Аруна — на главную">
+      <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+        <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+        <circle cx="26.3" cy="21.6" r="1.4" fill="rgba(154,134,224,.9)"/>
+        <circle cx="6.4" cy="22.4" r="1.1" fill="rgba(116,199,184,.9)"/>
+      </svg>
+      <span class="logo__text">Аруна</span>
+    </a>
+
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Меню">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M3 6h16M3 11h16M3 16h16"/>
+      </svg>
+    </button>
+
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="#jyotish">Джйотиш</a>
+      <a href="#shastry">Шастры</a>
+      <a href="#dialog">Диалог</a>
+      <a href="#access">Бесплатно и подробно</a>
+      <a href="pricing.html">Тарифы</a>
+      <a class="btn btn--gold btn--sm" href="chart.html">Построить карту</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ============================================================ герой -->
+<section class="hero">
+  <canvas class="starfield" id="stars" aria-hidden="true"></canvas>
+  <div class="wrap hero__inner">
+    <div class="hero__text">
+      <p class="eyebrow">Джйотиш · Шастры · Диалог</p>
+      <h1>Сначала небо вашего рождения — <br>потом любой разговор о писаниях</h1>
+      <p class="lede">
+        Дата, время и место — и <strong>Аруна</strong> строит сидерическую карту.
+        После этого всё остальное перестаёт быть общим: сегодняшний день, отношения,
+        стих и ответ наставника считаются от вашей лагны, а не от месяца, в котором
+        вы родились.
+      </p>
+      <div class="hero__actions">
+        <a class="btn btn--gold" href="chart.html">
+          Построить карту
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/>
+          </svg>
+        </a>
+        <a class="btn btn--ghost" href="#dialog">Послушать, как отвечает Дипа</a>
+      </div>
+      <ul class="hero__facts">
+        <li>Карта и день — бесплатно, без регистрации</li>
+        <li>Сидерический зодиак, аянамша Лахири</li>
+        <li>Считается у вас в браузере</li>
+      </ul>
+    </div>
+
+    <aside class="sky-card" id="skyCard" aria-label="Небо прямо сейчас">
+      <header class="sky-card__head">
+        <div>
+          <p class="sky-card__label">Небо прямо сейчас</p>
+          <p class="sky-card__date" id="skyDate">—</p>
+        </div>
+        <span class="chip chip--gold" id="skyPlace">—</span>
+      </header>
+      <div class="sky-card__wheel" id="skyWheel"></div>
+      <dl class="sky-card__rows" id="skyRows"></dl>
+      <footer class="sky-card__foot">
+        <p class="tiny muted" id="skyNote">Считается у вас на устройстве, по местному времени.</p>
+      </footer>
+    </aside>
+  </div>
+</section>
+
+<!-- =============================================== три способа спросить -->
+<section class="section" id="jyotish">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Что делает помощник</p>
+      <h2>Три способа спросить у одного и того же неба</h2>
+      <p class="lede">
+        Карта строится один раз. Дальше к ней можно приходить с разными вопросами:
+        каким выйдет сегодняшний день, что происходит между двумя людьми и как быть
+        с тем, что не отпускает прямо сейчас.
+      </p>
+    </div>
+
+    <div class="three">
+      <article class="card card--hover feature reveal">
+        <span class="chip chip--gold">Пересчитывается каждое утро</span>
+        <h3>День по вашему небу</h3>
+        <p>
+          Где сегодня стоят грахи относительно вашей лагны, в какой накшатре Луна,
+          какие часы традиция советует занять делом, а какие переждать. И стих —
+          не из подборки «на каждый день», а подобранный по хозяину дня и фазе Луны.
+        </p>
+        <svg class="feature__art" viewBox="0 0 220 96" aria-hidden="true">
+          <path d="M6 70c26-40 52-40 78 0s52 40 78 0 26-40 52-26" fill="none" stroke="rgba(224,180,101,.4)" stroke-width="1.2"/>
+          <circle cx="45" cy="47" r="4.5" fill="var(--gold)"/>
+          <circle cx="123" cy="47" r="3" fill="rgba(154,134,224,.9)"/>
+          <circle cx="188" cy="55" r="2.4" fill="rgba(116,199,184,.9)"/>
+          <g stroke="rgba(255,255,255,.14)" stroke-width="1">
+            <path d="M6 82h208"/><path d="M45 82v-8M123 82v-8M188 82v-8"/>
+          </g>
+        </svg>
+        <a class="btn btn--quiet" href="chart.html">Посмотреть свой день →</a>
+      </article>
+
+      <article class="card card--hover feature reveal">
+        <span class="chip chip--violet">Аштакута и доши</span>
+        <h3>Две карты рядом</h3>
+        <p>
+          Классическое сопоставление по восьми кутам: где двоим легко без слов,
+          а где придётся договариваться вслух. С объяснением каждой куты — и без
+          итогового вердикта «подходите / не подходите».
+        </p>
+        <svg class="feature__art" viewBox="0 0 220 96" aria-hidden="true">
+          <circle cx="86" cy="48" r="30" fill="rgba(224,180,101,.08)" stroke="rgba(224,180,101,.45)"/>
+          <circle cx="134" cy="48" r="30" fill="rgba(154,134,224,.10)" stroke="rgba(154,134,224,.5)"/>
+          <path d="M110 22v52" stroke="rgba(255,255,255,.18)" stroke-dasharray="3 4"/>
+        </svg>
+        <a class="btn btn--quiet" href="compat.html">Сопоставить карты →</a>
+      </article>
+
+      <article class="card card--hover feature reveal">
+        <span class="chip chip--teal">Помнит, о чём был разговор</span>
+        <h3>Дипа — собеседник со шастрами</h3>
+        <p>
+          Дипа отвечает, держа перед глазами вашу карту и действующую дашу, и
+          опирается на писания, а не на общие слова. Разговор продолжается
+          с того места, где вы его оставили.
+        </p>
+        <svg class="feature__art" viewBox="0 0 220 96" aria-hidden="true">
+          <rect x="18" y="20" width="112" height="30" rx="14" fill="rgba(255,255,255,.055)" stroke="rgba(255,255,255,.14)"/>
+          <rect x="74" y="58" width="128" height="30" rx="14" fill="rgba(224,180,101,.10)" stroke="rgba(224,180,101,.4)"/>
+          <g fill="rgba(255,255,255,.34)"><circle cx="40" cy="35" r="2.6"/><circle cx="52" cy="35" r="2.6"/><circle cx="64" cy="35" r="2.6"/></g>
+          <g fill="rgba(244,221,169,.75)"><circle cx="100" cy="73" r="2.6"/><circle cx="112" cy="73" r="2.6"/><circle cx="124" cy="73" r="2.6"/></g>
+        </svg>
+        <a class="btn btn--quiet" href="dialog.html">Начать разговор →</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= шастры / стих -->
+<section class="section section--tight" id="shastry">
+  <div class="wrap">
+    <div class="scripture reveal" id="verseBlock">
+      <p class="eyebrow">Шастры</p>
+      <h2>Стих приносит небо, а не генератор случайных чисел</h2>
+      <p class="lede">
+        Хозяин сегодняшней вары, накшатра Луны и фаза собирают круг подходящих
+        стихов, а дата выбирает внутри него. Правило видно прямо под стихом —
+        его можно проверить.
+      </p>
+      <figure class="verse" id="verseCard">
+        <blockquote class="verse__sa" id="verseSa">—</blockquote>
+        <p class="verse__ru" id="verseRu">—</p>
+        <figcaption class="verse__meta">
+          <cite id="verseRef">—</cite>
+          <span class="verse__why" id="verseWhy"></span>
+        </figcaption>
+      </figure>
+      <p class="tiny muted">
+        Санскрит дан в транслитерации IAST, перевод — смысловой, сделанный для этого сайта.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== пример диалога -->
+<section class="section" id="dialog">
+  <div class="wrap dialog-grid">
+    <div class="sec-head sec-head--left">
+      <p class="eyebrow">Как это звучит</p>
+      <h2>Без вступлений: контекст уже собран</h2>
+      <p class="lede">
+        Дипа не начинает с «расскажите немного о себе». Карта и небо дня уже перед
+        ней, поэтому первая же фраза может быть по существу.
+      </p>
+      <ul class="ticks">
+        <li>видит вашу карту, дашу и транзиты на сегодня</li>
+        <li>возвращается к темам, о которых вы уже говорили</li>
+        <li>ссылается на стих, а не на «энергии месяца»</li>
+      </ul>
+      <a class="btn btn--ghost" href="dialog.html">Попробовать диалог</a>
+    </div>
+
+    <div class="chat" id="chat" aria-label="Пример переписки с наставником">
+      <div class="chat__msg chat__msg--me">
+        <p>Третий месяц не могу выбрать: остаться или уехать. Каждый раз откладываю.</p>
+      </div>
+      <div class="chat__msg chat__msg--mentor">
+        <p class="chat__who">Дипа <span class="chat__badge">видит вашу карту</span></p>
+        <p>
+          Луна сегодня в вашей четвёртой бхаве — теме дома и корней; в такие дни
+          решение о месте даётся тяжелее обычного. Прежде чем взвешивать за и против,
+          один вопрос: вы не можете уехать — или не можете попрощаться?
+        </p>
+      </div>
+      <div class="chat__msg chat__msg--me chat__msg--late">
+        <p>Скорее второе. Там всё, что я про себя помню.</p>
+      </div>
+      <div class="chat__msg chat__msg--mentor chat__msg--late">
+        <p class="chat__who">Дипа <span class="chat__badge">Чандра в 4-й бхаве</span></p>
+        <p>
+          Тогда это не выбор, а прощание — и одним усилием воли оно не делается.
+          Четвёртая бхава — то, что человек носит с собой, а не то, что остаётся
+          на карте города. Начните с малого: что из этого дома поедет с вами не
+          вещью, а привычкой?
+        </p>
+      </div>
+      <p class="chat__note tiny muted">Пример разговора. В вашем аккаунте на месте цитат — ваши настоящие положения грах.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================== как это работает -->
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Порядок действий</p>
+      <h2>Три шага, дальше всё само</h2>
+    </div>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="step__num">1</span>
+        <h3>Дата, время, место</h3>
+        <p>Хватит города и примерного времени. Минуты уточните позже — карта пересчитается за долю секунды.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step__num">2</span>
+        <h3>Карта считается</h3>
+        <p>Сидерический зодиак, аянамша Лахири, бхавы целыми раши. Грахи, накшатры с падами, действующая даша.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step__num">3</span>
+        <h3>Дальше говорим</h3>
+        <p>День, пара и диалог берут готовую карту и с первого экрана говорят о вас, а не о знаке месяца.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ================================================ бесплатно и подробно -->
+<section class="section" id="access">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Честно о деньгах</p>
+      <h2>Бесплатно — всё, что считается. Платно — то, что разбирается</h2>
+      <p class="lede">
+        Сама карта, небо дня, панчанга, мухурта и сумма по восьми кутам не стоят
+        ничего и не требуют регистрации. Деньги начинаются там, где нужен долгий
+        разбор: йоги, сила грах, полный парный отчёт, подбор времени под задачу.
+      </p>
+    </div>
+
+    <div class="tiers">
+      <article class="card tier reveal">
+        <p class="tier__name">Бесплатно</p>
+        <p class="tier__price">0 <span>₽</span></p>
+        <p class="tier__note">Без регистрации, без карты, без ограничения по числу расчётов.</p>
+        <ul class="tier__list">
+          <li>Карта рождения целиком: грахи, бхавы, накшатры с падами</li>
+          <li>Вимшоттари-даша: маха, антар, пратьянтар</li>
+          <li>Небо дня, панчанга и отрезки мухурты</li>
+          <li>Транзиты над вашей картой</li>
+          <li>Стих дня с правилом подбора</li>
+          <li>Совместимость: сумма по 36 гунам и восемь кут</li>
+        </ul>
+        <a class="btn btn--ghost btn--block" href="chart.html">Начать без регистрации</a>
+      </article>
+
+      <article class="card tier tier--accent reveal">
+        <p class="tier__name">За биджи</p>
+        <p class="tier__price">от 149 <span>₽</span></p>
+        <p class="tier__note">Разовая покупка разбора. Открытое остаётся у вас навсегда.</p>
+        <ul class="tier__list">
+          <li>Разбор карты: йоги, сила грах, ключевые связки</li>
+          <li>Полный парный отчёт: доши, раджу, махендра, что делать</li>
+          <li>Год вперёд: смены даш и переходы Гуру и Шани</li>
+          <li>Подбор мухурты под конкретную задачу и дату</li>
+          <li>Развёрнутый ответ наставника со ссылками на стихи</li>
+        </ul>
+        <a class="btn btn--gold btn--block" href="pricing.html">Сколько это стоит</a>
+      </article>
+
+      <article class="card tier reveal">
+        <p class="tier__name">Садхана</p>
+        <p class="tier__price">590 <span>₽/мес</span></p>
+        <p class="tier__note">Для тех, кто смотрит карту не раз в год, а каждую неделю.</p>
+        <ul class="tier__list">
+          <li>Все разборы без счёта и без списаний</li>
+          <li>Неограниченный диалог с наставником</li>
+          <li>Карты близких в одном аккаунте</li>
+          <li>Курсы платформы со скидкой</li>
+        </ul>
+        <a class="btn btn--ghost btn--block" href="pricing.html">Что входит</a>
+      </article>
+    </div>
+
+    <p class="tiny muted" style="text-align:center;margin-top:18px">
+      Приём оплаты ещё не подключён: сейчас разборы открываются в демонстрационном
+      режиме, чтобы было видно, за что предлагается платить.
+    </p>
+  </div>
+</section>
+
+<!-- ========================================================== платформа -->
+<section class="section" id="platform">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Платформа</p>
+      <h2>Помощник — не всё, что здесь есть</h2>
+      <p class="lede">
+        Один аккаунт на учёбу, практику и расчёты: ничего не нужно ставить отдельно.
+      </p>
+    </div>
+    <div class="grid-6">
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z"/>
+          <path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5A1.5 1.5 0 0 0 20 18.5v-13Z"/>
+        </svg>
+        <h3>Чтение писаний</h3>
+        <p>Бхагавад-гита и другие тексты по главам, с разбором и проверкой понимания.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M12 4a5 5 0 0 0-5 5c0 1.6.8 2.6 1.4 3.4.5.7.6 1.3.6 2.1V16h6v-1.5c0-.8.1-1.4.6-2.1C16.2 11.6 17 10.6 17 9a5 5 0 0 0-5-5Z"/>
+          <path d="M10 19h4M10.5 21.5h3"/>
+        </svg>
+        <h3>Тренажёр памяти</h3>
+        <p>Короткие ежедневные упражнения на внимание и удержание стиха, с общим зачётом.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <circle cx="12" cy="5" r="2.4"/><circle cx="5.5" cy="18.5" r="2.4"/><circle cx="18.5" cy="18.5" r="2.4"/>
+          <path d="M12 7.4v4.2M12 11.6H5.5v4.5M12 11.6h6.5v4.5"/>
+        </svg>
+        <h3>Древо рода</h3>
+        <p>Соберите историю семьи и откройте её тем, кому она важна.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M12 3v12M12 18.5a2.5 2.5 0 1 1-2.5-2.5"/>
+          <path d="M16 6.5c2 .6 3.4 2 3.6 4M16 3c3.6.8 5.8 3.4 6 7"/>
+        </svg>
+        <h3>Хинди на слух</h3>
+        <p>Разговорный курс с живым произношением и записью собственной речи.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.2"/><path d="M12 7.4V12l3.2 2"/>
+        </svg>
+        <h3>Выбор времени</h3>
+        <p>Когда начинать — по небу нужного дня, а не по общему календарю.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="2.6"/><circle cx="16.5" cy="9.5" r="2.2"/>
+          <path d="M4 19c0-2.5 2-4.5 4.5-4.5S13 16.5 13 19M14.5 19c0-2 1.2-3.6 3-4"/>
+        </svg>
+        <h3>Школы и наставники</h3>
+        <p>Учитесь группой: у школы свои курсы, свой ритм и свой наставник.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ вопросы -->
+<section class="section" id="faq">
+  <div class="wrap faq-grid">
+    <div class="sec-head sec-head--left">
+      <p class="eyebrow">Вопросы</p>
+      <h2>Коротко о главном</h2>
+      <p class="lede">Если ответа здесь нет — спросите Дипу, она отвечает и про сам сервис.</p>
+    </div>
+    <div class="faq">
+      <details class="faq__item" open>
+        <summary>За что придётся платить?</summary>
+        <div class="faq__body">
+          <p>
+            Ни за что из того, что считается автоматически: карта, небо дня,
+            панчанга, мухурта, транзиты, стих и сумма по восьми кутам открыты
+            всем и без регистрации. Платными сделаны разборы, где нужна долгая
+            работа: йоги и сила грах, полный парный отчёт, годовой обзор,
+            подбор времени под задачу. Оплата — разовыми биджами или подпиской.
+            Цены на <a href="pricing.html">странице тарифов</a>.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Я не знаю точного времени рождения</summary>
+        <div class="faq__body">
+          <p>
+            Начните с приблизительного: раши грах и накшатра Луны почти не сдвинутся,
+            а вот лагна зависит от минут. Когда найдёте справку или спросите родных —
+            вернётесь и уточните. Если времени нет совсем, поставьте галочку
+            «неизвестно»: расчёт пойдёт на полдень, и мы честно пометим, что лагна
+            приблизительная.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>По какой системе считается карта?</summary>
+        <div class="faq__body">
+          <p>
+            Сидерический (нираяна) зодиак, аянамша Лахири — читрапакша. Бхавы берём
+            целыми раши: первая бхава — весь раши лагны, как в классической
+            индийской традиции и как рисуют северную и южную карту. Раху и Кету —
+            средние узлы Луны. Положения видимые, с нутацией и аберрацией.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Насколько точны расчёты?</summary>
+        <div class="faq__body">
+          <p>
+            Эфемерида сверена с независимой (pyephem) на 1176 датах с 1930 по 2050
+            год: Луна расходится не больше чем на 14″, Солнце — 35″, планеты —
+            в пределах 3,5′. Для сравнения, пада накшатры занимает 3°20′. Формулу
+            лагны мы отдельно проверили прямым перебором по горизонту — от экватора
+            до 69-й широты.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Астрология рядом с писаниями — это не противоречие?</summary>
+        <div class="faq__body">
+          <p>
+            Джйотиш в самой традиции — веданга, вспомогательная часть Вед: наука
+            о времени, а не о судьбе, которую нельзя изменить. Поэтому карта здесь
+            всегда стоит рядом со стихом: небо описывает обстоятельства, писание
+            говорит, как в них держаться. Решения остаются за человеком.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Куда уходят мои данные о рождении?</summary>
+        <div class="faq__body">
+          <p>
+            Никуда. На этих страницах весь расчёт выполняет ваш браузер: дата,
+            время и место не отправляются на сервер и хранятся только в памяти
+            вашего устройства. Очистить их можно в любой момент — кнопкой на
+            странице карты.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Дипа заменяет живого наставника?</summary>
+        <div class="faq__body">
+          <p>
+            Нет, и не пытается. Она готовит вас к разговору с человеком: собирает
+            карту, находит стих, задаёт вопросы, до которых вы сами не дошли.
+            Всё, что касается решений, остаётся между вами и теми, кому вы
+            доверяете.
+          </p>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== финальный CTA -->
+<section class="section cta">
+  <div class="wrap cta__inner">
+    <p class="divider-star" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M9 1.5 10.6 7 16 9l-5.4 2L9 16.5 7.4 11 2 9l5.4-2z" fill="currentColor"/>
+      </svg>
+    </p>
+    <h2>Небо той минуты никуда не делось</h2>
+    <p class="lede">
+      Дата, время и место — и через полминуты вы увидите его целиком: где стояли
+      грахи, какая была накшатра и какой период начался в тот день.
+    </p>
+    <div class="hero__actions hero__actions--center">
+      <a class="btn btn--gold" href="chart.html">Построить карту</a>
+      <a class="btn btn--ghost" href="compat.html">Сопоставить две карты</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__grid">
+      <div>
+        <a class="logo" href="index.html">
+          <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+            <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+            <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+            <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+          </svg>
+          <span class="logo__text">Аруна</span>
+        </a>
+        <p class="small muted" style="margin-top:14px;max-width:34ch">
+          Джйотиш, шастры и наставник, которому известно ваше небо.
+        </p>
+      </div>
+      <div>
+        <h4>Расчёты</h4>
+        <ul>
+          <li><a href="chart.html">Карта и день</a></li>
+          <li><a href="compat.html">Совместимость</a></li>
+          <li><a href="muhurta.html">Выбор времени</a></li>
+          <li><a href="dialog.html">Диалог с Дипой</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Платформа</h4>
+        <ul>
+          <li><a href="#platform">Чтение писаний</a></li>
+          <li><a href="#platform">Тренажёр памяти</a></li>
+          <li><a href="#platform">Древо рода</a></li>
+          <li><a href="#platform">Школы и наставники</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Ещё</h4>
+        <ul>
+          <li><a href="pricing.html">Тарифы и биджи</a></li>
+          <li><a href="#faq">Вопросы</a></li>
+          <li><a href="legal.html">Соглашение и приватность</a></li>
+          <li><a href="#shastry">Как выбирается стих</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© <span id="year">2026</span> Аруна</span>
+      <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/core/astro.js"></script>
+<script src="assets/js/core/tz.js"></script>
+<script src="assets/js/data/jyotish-data.js"></script>
+<script src="assets/js/data/verses.js"></script>
+<script src="assets/js/jyotish/chart.js"></script>
+<script src="assets/js/jyotish/panchanga.js"></script>
+<script src="assets/js/data/cities.js"></script>
+<script src="assets/js/ui/chartview.js"></script>
+<script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/landing.js"></script>
+</body>
+</html>

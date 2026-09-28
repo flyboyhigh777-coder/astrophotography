@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тарифы: что бесплатно, а что за биджи — Аруна</title>
+<meta name="description" content="Всё, что считается автоматически, бесплатно и без регистрации. Платными сделаны долгие разборы: йоги, сила грах, полный парный отчёт, год вперёд и подбор времени.">
+<meta name="theme-color" content="#080b16">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..600;1,400&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/charts.css">
+<link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/landing.css">
+</head>
+<body>
+
+<header class="header" id="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="index.html" aria-label="Аруна — на главную">
+      <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+        <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+      </svg>
+      <span class="logo__text">Аруна</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Меню">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
+    </button>
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="chart.html">Карта и день</a>
+      <a href="compat.html">Совместимость</a>
+      <a href="muhurta.html">Выбор времени</a>
+      <a href="dialog.html">Диалог</a>
+      <a href="pricing.html" aria-current="page">Тарифы</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Тарифы</p>
+      <h1>Бесплатно — то, что считается. Платно — то, что разбирается</h1>
+      <p class="lede">
+        Граница проходит не по количеству («три расчёта в день»), а по природе работы.
+        Цифры, которые машина выдаёт за миллисекунды, брать деньги не за что. Долгий
+        разбор — это уже продукт, и он стоит денег.
+      </p>
+    </div>
+  </section>
+
+  <section class="section--tight">
+    <div class="wrap">
+
+      <div class="panel">
+        <div class="panel__head"><h2>Бесплатно и без регистрации</h2></div>
+        <div class="table-wrap">
+          <table class="price-table">
+            <thead><tr><th>Что</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td>Карта рождения: грахи, бхавы, накшатры с падами, достоинства</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Три вида карты: северная, южная, круг зодиака</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Вимшоттари-даша: маха, антар, пратьянтар и вся линейка периодов</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Небо дня: панчанга, транзиты над вашей картой</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Мухурта сегодняшнего дня: раху-кала, абхиджит, брахма-мухурта</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Стих дня с правилом подбора</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Совместимость: сумма по 36 гунам и очки всех восьми кут</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Короткие ответы наставника по вашей карте</td><td class="price-free">бесплатно</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tiny muted" style="margin-top:12px">
+          Ограничений по числу расчётов нет и не планируется: карта считается у вас
+          в браузере и нам ничего не стоит.
+        </p>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h2>Разборы за биджи</h2>
+          <p class="tiny muted" id="currencyAbout"></p>
+        </div>
+        <div class="table-wrap">
+          <table class="price-table" id="featureTable">
+            <thead><tr><th>Разбор</th><th>Что внутри</th><th>Цена</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="tiny muted" style="margin-top:12px">
+          Открытый разбор остаётся у вас навсегда и пересчитывается при любом
+          изменении карты — доплачивать за это не нужно.
+        </p>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>Пакеты бидж</h2></div>
+        <div class="packs" id="packs"></div>
+        <p class="tiny muted" style="margin-top:14px">
+          Биджи не сгорают и не имеют срока. Неистраченные можно вернуть — деньги
+          придут тем же способом, которым платили.
+        </p>
+      </div>
+
+      <div class="panel" id="plan">
+        <div class="panel__head"><h2>Подписка «Садхана»</h2></div>
+        <div class="tiers" style="grid-template-columns:repeat(2,1fr)">
+          <article class="card tier tier--accent">
+            <p class="tier__name">Помесячно</p>
+            <p class="tier__price" id="planMonth">— <span>₽/мес</span></p>
+            <p class="tier__note">Отменяется в любой момент, остаток месяца доживает.</p>
+          </article>
+          <article class="card tier">
+            <p class="tier__name">На год</p>
+            <p class="tier__price" id="planYear">— <span>₽/год</span></p>
+            <p class="tier__note" id="planSave">—</p>
+          </article>
+        </div>
+        <ul class="ticks">
+          <li>Все разборы без счёта и без списаний</li>
+          <li>Неограниченный развёрнутый диалог с наставником</li>
+          <li>Карты близких в одном аккаунте — до десяти</li>
+          <li>Курсы платформы со скидкой</li>
+        </ul>
+        <p class="tiny muted">
+          Подписка имеет смысл примерно от четырёх разборов в месяц. Если смотрите
+          карту пару раз в год — дешевле разовые биджи, и мы не станем уговаривать
+          на обратное.
+        </p>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>Для наставников и школ</h2></div>
+        <p>
+          Создание школы, курсов и заданий бесплатно: платформа зарабатывает не на
+          авторах, а на своих разборах. С продажи платного курса удерживается
+          комиссия <b>10%</b> — она покрывает приём платежа и хостинг материалов.
+        </p>
+        <p class="muted">
+          Права на материалы остаются у автора. Мы показываем курс его ученикам и
+          в каталоге — и больше ничего с ним не делаем.
+        </p>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head"><h2>Оплата и возвраты</h2></div>
+        <div class="note-box note-box--warn">
+          <h4>Сейчас приём оплаты не подключён</h4>
+          <p>
+            Разборы открываются в демонстрационном режиме: биджи начисляются и
+            списываются по-настоящему, но денег ни с кого не берут. Так видно,
+            как всё будет устроено, до того как появится первая оплата.
+          </p>
+        </div>
+        <p>
+          Когда оплата заработает: банковская карта и СБП, зачисление автоматическое.
+          Данные карты проходят мимо нас — их видит только платёжный провайдер.
+        </p>
+        <p>
+          Неистраченные биджи возвращаются по письму в поддержку. Уже открытые
+          разборы возврату не подлежат — кроме случая, когда разбор не открылся
+          из-за нашей ошибки: тогда мы возвращаем списание на баланс сами, без
+          напоминаний.
+        </p>
+        <p class="tiny muted">
+          Все цены на этой странице — рабочий черновик. Они заданы в одном месте
+          в коде и меняются одной правкой.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bottom" style="margin-top:0;border-top:0">
+      <span>© <span id="year">2026</span> Аруна</span>
+      <a href="legal.html">Соглашение и приватность</a>
+      <a href="index.html">На главную</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/core/access.js"></script>
+<script src="assets/js/core/tz.js"></script>
+<script src="assets/js/ui/common.js"></script>
+<script>
+(function (doc) {
+  'use strict';
+  var Acc = window.ArunaAccess, S = window.Aruna;
+
+  doc.getElementById('currencyAbout').textContent = Acc.CURRENCY.about;
+
+  var order = ['chart.yogas', 'chart.strength', 'chart.forecast',
+               'compat.full', 'muhurta.pick', 'dialog.deep'];
+  doc.querySelector('#featureTable tbody').innerHTML = order.map(function (id) {
+    var f = Acc.feature(id);
+    return '<tr><td><b>' + S.esc(f.title) + '</b><br><span class="tiny muted">' +
+      S.esc(f.free) + '</span></td>' +
+      '<td class="small">' + S.esc(f.about) + '</td>' +
+      '<td><span class="seed">' + S.esc(Acc.seeds(f.price)) + '</span></td></tr>';
+  }).join('');
+
+  doc.getElementById('packs').innerHTML = Acc.PACKS.map(function (p, i) {
+    var per = Math.round(p.price / p.seeds);
+    return '<div class="pack' + (i === Acc.PACKS.length - 1 ? ' pack--best' : '') + '">' +
+      '<p class="pack__n">' + p.seeds + '</p>' +
+      '<p class="small muted">' + S.esc(Acc.plural(p.seeds)) + '</p>' +
+      '<p class="pack__price">' + p.price.toLocaleString('ru-RU') + ' ₽</p>' +
+      (p.save ? '<p class="pack__save">−' + p.save + '% · ' + per + ' ₽ за биджу</p>'
+              : '<p class="tiny muted">' + per + ' ₽ за биджу</p>') +
+    '</div>';
+  }).join('');
+
+  doc.getElementById('planMonth').innerHTML = Acc.PLAN.month + ' <span>₽/мес</span>';
+  doc.getElementById('planYear').innerHTML = Acc.PLAN.year.toLocaleString('ru-RU') + ' <span>₽/год</span>';
+  var save = Math.round((1 - Acc.PLAN.year / (Acc.PLAN.month * 12)) * 100);
+  doc.getElementById('planSave').textContent = 'Выгоднее помесячной на ' + save + '% — два месяца в подарок.';
+})(document);
+</script>
+</body>
+</html>
