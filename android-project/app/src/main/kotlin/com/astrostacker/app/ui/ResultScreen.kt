@@ -31,6 +31,7 @@ import com.astrostacker.app.R
 import com.astrostacker.app.SaveState
 import com.astrostacker.app.ScreenState
 import com.astrostacker.app.data.ExportFormat
+import com.astrostacker.app.ui.theme.GradientTopBar
 
 /**
  * Экран результата: итоговый снимок без "художественной" постобработки,
@@ -62,7 +63,7 @@ fun ResultScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.result_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.result_title))
 
             Image(
                 bitmap = imageBitmap,
@@ -127,7 +128,7 @@ fun ResultScreen(
                         state.groundFramesUsed
                     ),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
 
@@ -160,7 +161,7 @@ fun ResultScreen(
             when (state.saveState) {
                 SaveState.Success -> Text(
                     stringResource(R.string.result_save_success),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.tertiary,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 SaveState.Failed -> Text(
