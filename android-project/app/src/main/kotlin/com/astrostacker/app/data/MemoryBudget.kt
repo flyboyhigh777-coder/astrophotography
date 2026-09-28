@@ -18,7 +18,7 @@ package com.astrostacker.app.data
 object MemoryBudget {
 
     /** Доля кучи, которую отдаём под буферы кадров - остальное на Compose/Bitmap-декодер/GC-паузы. */
-    private const val USABLE_FRACTION = 0.45
+    private const val USABLE_FRACTION = 0.6
 
     /** Байт на пиксель у одного FloatImage: 3 канала (R,G,B) x 4 байта (Float). */
     private const val BYTES_PER_PIXEL_FLOAT_IMAGE = 12L
@@ -36,8 +36,10 @@ object MemoryBudget {
     /** Нижний предел - ниже него обработка теряет смысл, лучше явно упереться в потолок, чем декодировать в 0 пикселей. */
     const val MIN_TOTAL_PIXELS = 640L * 480L
 
-    /** Верхний потолок v1 (~12.6 Мп) - см. docs/ARCHITECTURE.md §4, пункт 1 ("~3000-4000 px по стороне"). */
-    const val HARD_CAP_TOTAL_PIXELS = 4096L * 3072L
+    /** Верхний потолок (~48 Мп) - выше практического разрешения телефонных камер, так что
+     * реальные фото почти никогда не режутся; это лишь страховка от OOM на экстремальных
+     * сериях, а не рабочий предел (см. docs/ARCHITECTURE.md §4). */
+    const val HARD_CAP_TOTAL_PIXELS = 8000L * 6000L
 
     data class Budget(val maxTotalPixels: Long, val maxMemoryBytes: Long, val frameCount: Int)
 

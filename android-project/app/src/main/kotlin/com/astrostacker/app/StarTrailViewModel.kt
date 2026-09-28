@@ -53,7 +53,9 @@ sealed interface TrailScreen {
         /** Все исходные фото, участвовавшие в этой сборке - чтобы "Добавить кадры" знал, к чему дописывать. */
         val sourcePhotos: List<Uri>,
         val edit: EditParams = EditParams(),
-        val exportFormat: ExportFormat = ExportFormat.JPEG,
+        // TIFF16 по умолчанию, а не JPEG: трек - результат стекинга, JPEG (8 бит, lossy)
+        // обрежет как раз то, ради чего снимают серию - см. также ProcessingViewModel.
+        val exportFormat: ExportFormat = ExportFormat.TIFF16,
         val saveState: SaveState = SaveState.Idle,
         /** Размер файла, который реально сохранится (полное разрешение с учётом поворота/обрезки) - НЕ размер [previewBitmap], который уменьшен для экрана. */
         val outputWidth: Int = 0,

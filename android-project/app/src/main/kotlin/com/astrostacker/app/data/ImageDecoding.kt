@@ -13,6 +13,7 @@ import com.astrostacker.core.pano.PanoImage
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.math.sqrt
 
 /**
  * [image] равен null, если файл не удалось декодировать вовсе (не
@@ -134,9 +135,22 @@ object ImageDecoding {
                 inSampleSize = sampleSize
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
-            context.contentResolver.openInputStream(uri)?.use { stream ->
+            val decoded = context.contentResolver.openInputStream(uri)?.use { stream ->
                 BitmapFactory.decodeStream(stream, null, decodeOptions)
-            }
+            } ?: return null
+            // inSampleSize декодирует только степенями двойки - между "оставить как
+            // есть" (ещё выше бюджета) и "уполовинить" (может дать половину бюджета
+            // и меньше) может пропадать до ~75% выделенных пикселей впустую. Точно
+            // доужимаем результат до бюджета отдельным ресайзом - тут уже не степень
+            // двойки, а нужный размер, так меньше теряем реального разрешения кадра.
+            val pixels = decoded.width.toLong() * decoded.height
+            if (pixels <= maxTotalPixels) return decoded
+            val scale = sqrt(maxTotalPixels.toDouble() / pixels)
+            val targetW = (decoded.width * scale).toInt().coerceAtLeast(1)
+            val targetH = (decoded.height * scale).toInt().coerceAtLeast(1)
+            val scaled = Bitmap.createScaledBitmap(decoded, targetW, targetH, true)
+            if (scaled !== decoded) decoded.recycle()
+            scaled
         } catch (e: Exception) {
             // Файл повреждён / не изображение / нет доступа к Uri (грант
             // истёк) - для вызывающей стороны это неотличимо от "не удалось

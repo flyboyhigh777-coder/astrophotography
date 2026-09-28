@@ -44,6 +44,7 @@ import com.astrostacker.app.R
 import com.astrostacker.app.SaveState
 import com.astrostacker.app.data.ExportFormat
 import com.astrostacker.core.pano.PanoProjection
+import com.astrostacker.core.pano.PanoRender
 import com.astrostacker.core.pano.PanoStage
 import com.astrostacker.app.ui.theme.GradientTopBar
 
@@ -227,6 +228,13 @@ private fun PanoResultScreen(
             }
 
             Text(stringResource(R.string.pano_projection), style = MaterialTheme.typography.titleMedium)
+            // Плоская/цилиндр математически ломаются на широком угле обзора (тангенс
+            // уходит в бесконечность у края) - результат такого выбора не "не идеальная,
+            // но узнаваемая" панорама, а размазанное месиво без объяснения причины.
+            // Не даём выбрать проекцию, которая заведомо не потянет текущий охват -
+            // тот же порог, что и в автовыборе PanoRender.autoProjection.
+            val minProjection = PanoRender.autoProjection(state.horizontalDeg, state.verticalDeg)
+            val anyDisabled = projectionRank(minProjection) > 0
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 for (p in PanoProjection.values()) {
                     val label = stringResource(
@@ -236,12 +244,19 @@ private fun PanoResultScreen(
                             PanoProjection.SPHERICAL -> R.string.pano_projection_spherical
                         }
                     )
+                    val usable = projectionRank(p) >= projectionRank(minProjection)
                     if (p == state.projection) Button(onClick = {}, enabled = !state.isRendering) { Text(label) }
-                    else OutlinedButton(onClick = { onProjection(p) }, enabled = !state.isRendering) { Text(label) }
+                    else OutlinedButton(onClick = { onProjection(p) }, enabled = !state.isRendering && usable) { Text(label) }
                 }
             }
             Text(
-                stringResource(if (state.isRendering) R.string.pano_rendering else R.string.pano_projection_hint),
+                stringResource(
+                    when {
+                        state.isRendering -> R.string.pano_rendering
+                        anyDisabled -> R.string.pano_projection_limited
+                        else -> R.string.pano_projection_hint
+                    }
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -270,6 +285,17 @@ private fun PanoResultScreen(
                     else OutlinedButton(onClick = { onFormat(format) }) { Text(label) }
                 }
             }
+            Text(
+                stringResource(
+                    when (state.exportFormat) {
+                        ExportFormat.TIFF16 -> R.string.result_format_tiff_hint
+                        ExportFormat.PNG -> R.string.result_format_png_hint
+                        ExportFormat.JPEG -> R.string.result_format_jpeg_hint
+                    }
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             when (state.saveState) {
                 SaveState.Success -> Text(stringResource(R.string.result_save_success), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodyMedium)
                 SaveState.Failed -> Text(stringResource(R.string.result_save_error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
@@ -290,4 +316,11 @@ private fun PanoResultScreen(
             OutlinedButton(onClick = onReset, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.result_start_over)) }
         }
     }
+}
+
+/** "Сила" проекции по охвату, который она способна представить без вырождения (см. PanoRender.autoProjection). */
+private fun projectionRank(p: PanoProjection): Int = when (p) {
+    PanoProjection.PLANAR -> 0
+    PanoProjection.CYLINDRICAL -> 1
+    PanoProjection.SPHERICAL -> 2
 }

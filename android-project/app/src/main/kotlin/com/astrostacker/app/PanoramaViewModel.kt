@@ -45,7 +45,9 @@ sealed interface PanoScreen {
         val verticalDeg: Double,
         val autoCropEnabled: Boolean = true,
         val edit: EditParams = EditParams(),
-        val exportFormat: ExportFormat = ExportFormat.JPEG,
+        // TIFF16 по умолчанию, а не JPEG - см. StarTrailViewModel/ProcessingViewModel:
+        // JPEG (8 бит, lossy) режет как раз то, ради чего собирали склейку.
+        val exportFormat: ExportFormat = ExportFormat.TIFF16,
         val saveState: SaveState = SaveState.Idle,
         val isRendering: Boolean = false,
         val outputWidth: Int = 0,
@@ -89,8 +91,12 @@ class PanoramaViewModel(application: Application) : AndroidViewModel(application
             try {
                 val context = getApplication<Application>()
                 val heap = Runtime.getRuntime().maxMemory()
-                // ~35% кучи на входные кадры (4 байта/пиксель), не больше 12 Мп на кадр.
-                val perImage = (heap * 0.35 / 4 / total).toLong().coerceIn(640L * 480, 12_000_000L)
+                // ~55% кучи на входные кадры (4 байта/пиксель), не больше 48 Мп на кадр -
+                // выше практического разрешения телефонных камер, так что реальные фото
+                // почти никогда не режутся; потолок - лишь страховка от OOM на экстремальных
+                // сериях (largeHeap уже включён в манифесте, к тому же выше по коду есть
+                // отдельный catch (OutOfMemoryError) с понятным сообщением пользователю).
+                val perImage = (heap * 0.55 / 4 / total).toLong().coerceIn(640L * 480, 48_000_000L)
                 val loaded = ArrayList<PanoImage>()
                 for ((i, uri) in picking.photos.withIndex()) {
                     val img = withContext(Dispatchers.IO) { ImageDecoding.decodePanoImage(context, uri, perImage) }
@@ -120,8 +126,8 @@ class PanoramaViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    /** ~25% кучи под результат (6 байт/пиксель), не больше 60 Мп. */
-    private fun outputBudget(): Long = (Runtime.getRuntime().maxMemory() * 0.25 / 6).toLong().coerceIn(2_000_000L, 60_000_000L)
+    /** ~35% кучи под результат (6 байт/пиксель), не больше 100 Мп. */
+    private fun outputBudget(): Long = (Runtime.getRuntime().maxMemory() * 0.35 / 6).toLong().coerceIn(2_000_000L, 100_000_000L)
 
     private suspend fun renderAndShow(projection: PanoProjection, hDeg: Double, vDeg: Double, previous: PanoScreen.Result?) {
         val align = alignment ?: return
