@@ -99,6 +99,8 @@
     <string name="pano_projection_spherical">Сфера</string>
     <string name="pano_projection_hint">Плоская — прямые линии остаются прямыми (до ~90°). Цилиндр — широкие горизонтальные панорамы до 360°. Сфера — несколько рядов и большой охват по вертикали.</string>
     <string name="pano_projection_limited">При таком охвате плоская и/или цилиндрическая проекции дают размазанный результат (математически не тянут такой угол) — доступна только сферическая.</string>
+    <string name="pano_projection_auto">Авто</string>
+    <string name="pano_projection_picker_hint">Можно выбрать заранее — если угол обзора окажется слишком широким для выбранной проекции, приложение само подстрахуется более широкой (это станет видно только после склейки).</string>
     <string name="pano_rendering">Пересборка панорамы…</string>
     <string name="pano_autocrop">Обрезать пустые края</string>
     <string name="pano_autocrop_hint">Убирает неровные чёрные края по периметру — остаётся наибольший прямоугольник без пустот.</string>

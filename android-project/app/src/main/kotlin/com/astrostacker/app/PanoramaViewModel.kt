@@ -31,7 +31,9 @@ import kotlinx.coroutines.withContext
 sealed interface PanoScreen {
     data class Picking(
         val photos: List<Uri> = emptyList(),
-        val error: String? = null
+        val error: String? = null,
+        /** null - "Авто" (выбрать проекцию по фактическому охвату после склейки, как раньше). */
+        val preferredProjection: PanoProjection? = null
     ) : PanoScreen
 
     data class Processing(val progress: PanoProgress) : PanoScreen
@@ -82,6 +84,11 @@ class PanoramaViewModel(application: Application) : AndroidViewModel(application
         (_state.value as? PanoScreen.Picking)?.let { _state.value = it.copy(error = null) }
     }
 
+    /** [projection] - null возвращает к "Авто" (выбрать по фактическому охвату после склейки). */
+    fun setPreferredProjection(projection: PanoProjection?) {
+        (_state.value as? PanoScreen.Picking)?.let { _state.value = it.copy(preferredProjection = projection) }
+    }
+
     fun start() {
         val picking = _state.value as? PanoScreen.Picking ?: return
         if (picking.photos.size < 2) return
@@ -113,7 +120,13 @@ class PanoramaViewModel(application: Application) : AndroidViewModel(application
                     PanoramaStitcher.align(images, config) { _state.value = PanoScreen.Processing(it) }
                 }
                 val (h, v) = PanoRender.angularExtent(images, alignment!!)
-                renderAndShow(PanoRender.autoProjection(h, v), h, v, null)
+                // Пользователь мог выбрать проекцию ДО склейки, когда фактический охват ещё
+                // не известен - если выбор оказался слабее нужного (см. clampProjection),
+                // подстраховываемся минимально необходимой вместо размазанного результата.
+                val projection = picking.preferredProjection
+                    ?.let { PanoRender.clampProjection(it, h, v) }
+                    ?: PanoRender.autoProjection(h, v)
+                renderAndShow(projection, h, v, null)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: OutOfMemoryError) {

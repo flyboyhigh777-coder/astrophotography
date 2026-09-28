@@ -46,6 +46,7 @@ import com.astrostacker.app.data.ExportFormat
 import com.astrostacker.core.pano.PanoProjection
 import com.astrostacker.core.pano.PanoRender
 import com.astrostacker.core.pano.PanoStage
+import com.astrostacker.app.ui.theme.GlassCard
 import com.astrostacker.app.ui.theme.GradientTopBar
 
 /** Вкладка "Панорама": переключает экраны по [PanoScreen]. */
@@ -53,7 +54,7 @@ import com.astrostacker.app.ui.theme.GradientTopBar
 fun PanoramaRoot(vm: PanoramaViewModel) {
     val state by vm.state.collectAsState()
     when (val s = state) {
-        is PanoScreen.Picking -> PanoPickerScreen(s, vm::updatePhotos, vm::start, vm::dismissError)
+        is PanoScreen.Picking -> PanoPickerScreen(s, vm::updatePhotos, vm::start, vm::dismissError, vm::setPreferredProjection)
         is PanoScreen.Processing -> PanoProcessingScreen(s, vm::cancel)
         is PanoScreen.Result -> PanoResultScreen(
             s, vm::setProjection, vm::setAutoCrop, vm::openEditor, vm::setExportFormat, vm::save, vm::reset
@@ -76,7 +77,8 @@ private fun PanoPickerScreen(
     state: PanoScreen.Picking,
     onPhotos: (List<Uri>) -> Unit,
     onStart: () -> Unit,
-    onDismissError: () -> Unit
+    onDismissError: () -> Unit,
+    onProjection: (PanoProjection?) -> Unit
 ) {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         if (uris.isNotEmpty()) onPhotos(uris)
@@ -117,6 +119,33 @@ private fun PanoPickerScreen(
                 Text(stringResource(R.string.pano_picker_take_photo))
             }
             Text(stringResource(R.string.picker_selected_count, state.photos.size), style = MaterialTheme.typography.bodyMedium)
+
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.pano_projection), style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                        val autoLabel = stringResource(R.string.pano_projection_auto)
+                        if (state.preferredProjection == null) Button(onClick = { onProjection(null) }) { Text(autoLabel) }
+                        else OutlinedButton(onClick = { onProjection(null) }) { Text(autoLabel) }
+                        for (p in PanoProjection.values()) {
+                            val label = stringResource(
+                                when (p) {
+                                    PanoProjection.PLANAR -> R.string.pano_projection_planar
+                                    PanoProjection.CYLINDRICAL -> R.string.pano_projection_cylindrical
+                                    PanoProjection.SPHERICAL -> R.string.pano_projection_spherical
+                                }
+                            )
+                            if (state.preferredProjection == p) Button(onClick = { onProjection(p) }) { Text(label) }
+                            else OutlinedButton(onClick = { onProjection(p) }) { Text(label) }
+                        }
+                    }
+                    Text(
+                        stringResource(R.string.pano_projection_picker_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
 
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
