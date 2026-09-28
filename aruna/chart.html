@@ -35,6 +35,7 @@
       <a href="compat.html">Совместимость</a>
       <a href="dialog.html">Диалог</a>
       <a href="muhurta.html">Выбор времени</a>
+      <a href="rectify.html">Время рождения</a>
       <a href="pricing.html">Тарифы</a>
       <a href="index.html#faq">Вопросы</a>
     </nav>
@@ -69,6 +70,15 @@
             <p class="form-note">Расчёт карты идёт в браузере, поэтому здесь нужен включённый JavaScript.</p>
           </noscript>
         </form>
+
+        <button class="btn btn--ghost btn--block" type="button" id="printBtn" hidden
+                onclick="window.print()">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.5" aria-hidden="true">
+            <path d="M4.5 6V2.5h7V6M4.5 11.5h7V14h-7zM3 6h10a1 1 0 0 1 1 1v3.5H2V7a1 1 0 0 1 1-1z"/>
+          </svg>
+          Сохранить в PDF
+        </button>
 
         <div class="panel" id="walletPanel">
           <h3 style="font-size:1rem;margin-bottom:0.7em">Ваш баланс</h3>
@@ -119,6 +129,7 @@
 <script src="assets/js/jyotish/chart.js"></script>
 <script src="assets/js/jyotish/panchanga.js"></script>
 <script src="assets/js/jyotish/dasha.js"></script>
+<script src="assets/js/jyotish/varga.js"></script>
 <script src="assets/js/jyotish/yogas.js"></script>
 <script src="assets/js/jyotish/strength.js"></script>
 <script src="assets/js/jyotish/forecast.js"></script>

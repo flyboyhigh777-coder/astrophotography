@@ -37,6 +37,20 @@ const PAGES = [
     act: async page => { await page.waitForTimeout(700); },
     filled: ['.daybar', '.win-list', '.wallet__balance']
   },
+  {
+    url: '/rectify.html', name: 'rectify',
+    act: async page => { await page.click('#exampleBtn'); await page.waitForTimeout(900); },
+    filled: ['.note-box', '#results .panel']
+  },
+  {
+    url: '/rectify.html', name: 'rectify-unlocked',
+    act: async page => {
+      await page.evaluate(() => window.ArunaAccess.setPlan(window.ArunaAccess.PLAN.id));
+      await page.click('#exampleBtn');
+      await page.waitForTimeout(900);
+    },
+    filled: ['.str-list .str', '.yoga-list .yoga', '.win-list .win']
+  },
   { url: '/pricing.html', name: 'pricing', filled: ['#featureTable tbody tr', '#packs .pack', '#planMonth'] },
   { url: '/legal.html', name: 'legal', filled: ['.panel p'] },
   {

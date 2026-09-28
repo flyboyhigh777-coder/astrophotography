@@ -477,3 +477,96 @@ h3.sub {
 .win__why li.minus { color: #ffbca8; }
 
 .talk__more { margin-top: 0.9em !important; padding-top: 0.8em; border-top: 1px solid var(--line-gold); }
+
+/* ---------------------------------------------------------------- варги */
+.varga-grid {
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+.varga {
+  padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.varga__head h4 {
+  font-family: var(--serif); font-size: 1.05rem; font-weight: 500; margin: 0 0 3px;
+}
+.varga__head h4 span { font-family: var(--mono); font-size: 0.8rem; }
+.varga__head p { margin: 0 0 10px; }
+.varga__chart { max-width: 100%; }
+
+/* ---------------------------------------------------------------- печать
+   Браузерная печать в PDF — самый дешёвый способ отдать человеку артефакт,
+   который можно сохранить и показать. Прячем всё интерактивное, разворачиваем
+   тёмную тему в светлую и не даём панелям рваться по страницам. */
+@media print {
+  @page { margin: 14mm 12mm; }
+
+  :root {
+    --ink: #17181d; --ink-2: #3a3d47; --ink-3: #6b6f7c; --ink-4: #8a8e99;
+    --line: #d9dbe2; --line-2: #c3c6d0; --line-gold: #c9a057;
+    --surface: #fff; --surface-2: #fafafc; --surface-3: #f3f4f8;
+    --gold: #9a7326; --gold-soft: #7a5a1c; --shadow: none; --shadow-gold: none;
+  }
+  body { background: #fff !important; color: #17181d; font-size: 11pt; }
+  body::before, .starfield { display: none !important; }
+
+  .header, .nav, .layout__aside, .footer, .btn, .chart-switch,
+  .locked__gate, .prompts, .modal, .form-card, .empty-state,
+  .nav-toggle, .section-split { display: none !important; }
+
+  .layout { display: block; }
+  .panel {
+    background: #fff !important; border: 1px solid #d9dbe2;
+    break-inside: avoid; page-break-inside: avoid; margin-bottom: 8mm;
+  }
+  .panel__head h2 { font-size: 14pt; }
+  h3.sub { color: #6b6f7c; margin-top: 6mm; }
+
+  .yoga, .koota, .str, .win, .bhava, .muhurta, .note-box, .varga, .extra {
+    break-inside: avoid; page-break-inside: avoid;
+    background: #fff !important; border-color: #d9dbe2 !important;
+  }
+  .str__fill, .dasha-row__fill, .daybar__seg { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+  /* замок в печати превращается в честную пометку, а не в обрезанный текст */
+  .locked__preview { max-height: none; filter: none; -webkit-mask-image: none; mask-image: none; }
+  .locked::after {
+    content: 'Этот разбор не открыт — в печатной версии показано только начало.';
+    display: block; font-size: 9pt; color: #8a8e99; padding: 4mm 0;
+  }
+
+  .grid-chart__frame { fill: #fff; stroke: #c3c6d0; }
+  .grid-chart__line { stroke: #d9dbe2; }
+  .grid-chart__cell.is-lagna { fill: #f6efdd; }
+  .grid-chart__graha { fill: #17181d; }
+  .grid-chart__corner { fill: #8a8e99; }
+  .wheel__ring, .wheel__spoke { stroke: #c3c6d0; }
+  .wheel__rashi { fill: #6b6f7c; }
+
+  table.data { font-size: 9.5pt; }
+  table.data th { color: #6b6f7c; }
+  a { color: #17181d; text-decoration: none; }
+  a[href^="http"]::after { content: ' (' attr(href) ')'; font-size: 8pt; color: #8a8e99; }
+
+  .print-head { display: block !important; }
+}
+
+/* шапка, которая видна только в печати */
+.print-head { display: none; margin-bottom: 8mm; padding-bottom: 4mm; border-bottom: 2px solid #c9a057; }
+.print-head h1 { font-size: 18pt; margin: 0 0 2mm; }
+.print-head p { font-size: 10pt; color: #6b6f7c; margin: 0; }
+
+/* --------------------------------------------------------- ректификация */
+.event-list { display: grid; gap: 10px; }
+.event-row {
+  display: grid; grid-template-columns: 1fr 180px 36px; gap: 10px; align-items: center;
+}
+@media (max-width: 680px) {
+  .event-row { grid-template-columns: 1fr 36px; }
+  .event-row .input[type='date'] { grid-column: 1; }
+  .event-row [data-role='del'] { grid-row: 1; grid-column: 2; }
+}
+.event-row [data-role='del'] {
+  font-size: 1.3rem; line-height: 1; padding: 0.2em 0.4em; color: var(--ink-4);
+}
+.event-row [data-role='del']:hover { color: var(--ember); }

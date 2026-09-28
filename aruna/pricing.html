@@ -35,6 +35,7 @@
       <a href="chart.html">Карта и день</a>
       <a href="compat.html">Совместимость</a>
       <a href="muhurta.html">Выбор времени</a>
+      <a href="rectify.html">Время рождения</a>
       <a href="dialog.html">Диалог</a>
       <a href="pricing.html" aria-current="page">Тарифы</a>
     </nav>
@@ -70,6 +71,8 @@
               <tr><td>Мухурта сегодняшнего дня: раху-кала, абхиджит, брахма-мухурта</td><td class="price-free">бесплатно</td></tr>
               <tr><td>Стих дня с правилом подбора</td><td class="price-free">бесплатно</td></tr>
               <tr><td>Совместимость: сумма по 36 гунам и очки всех восьми кут</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Навамша (D9) — вторая по важности карта</td><td class="price-free">бесплатно</td></tr>
+              <tr><td>Сохранение карты и разборов в PDF через печать браузера</td><td class="price-free">бесплатно</td></tr>
               <tr><td>Короткие ответы наставника по вашей карте</td><td class="price-free">бесплатно</td></tr>
             </tbody>
           </table>
@@ -196,8 +199,9 @@
 
   doc.getElementById('currencyAbout').textContent = Acc.CURRENCY.about;
 
-  var order = ['chart.yogas', 'chart.strength', 'chart.forecast',
-               'compat.full', 'muhurta.pick', 'dialog.deep'];
+  var order = ['rectify.run', 'compat.full', 'chart.yogas', 'chart.varga',
+               'chart.forecast', 'chart.strength', 'muhurta.pick', 'dialog.deep'];
+  // порядок — по убыванию цены: сначала то, ради чего сюда приходят
   doc.querySelector('#featureTable tbody').innerHTML = order.map(function (id) {
     var f = Acc.feature(id);
     return '<tr><td><b>' + S.esc(f.title) + '</b><br><span class="tiny muted">' +

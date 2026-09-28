@@ -37,7 +37,9 @@ for (const f of [
   '../assets/js/jyotish/yogas.js',
   '../assets/js/jyotish/strength.js',
   '../assets/js/jyotish/forecast.js',
-  '../assets/js/jyotish/muhurta.js'
+  '../assets/js/jyotish/muhurta.js',
+  '../assets/js/jyotish/varga.js',
+  '../assets/js/jyotish/rectify.js'
 ]) {
   vm.runInThisContext(fs.readFileSync(path.join(dir, f), 'utf8'));
 }
@@ -47,7 +49,8 @@ const A = globalThis.ArunaAstro, C = globalThis.ArunaChart, Tz = globalThis.Arun
       K = globalThis.ArunaAshtakoota, Cities = globalThis.ArunaCities,
       Verses = globalThis.ArunaVerses, Acc = globalThis.ArunaAccess,
       Y = globalThis.ArunaYogas, St = globalThis.ArunaStrength,
-      Fc = globalThis.ArunaForecast, Mu = globalThis.ArunaMuhurta;
+      Fc = globalThis.ArunaForecast, Mu = globalThis.ArunaMuhurta,
+      Vg = globalThis.ArunaVarga, Rt = globalThis.ArunaRectify;
 
 let passed = 0, failed = 0;
 const group = name => console.log('\n— ' + name);
@@ -462,6 +465,126 @@ group('Доступ и биджи');
      Object.keys(Acc.FEATURES).every(id => Acc.has(id)));
   Acc.setPlan('free');
   Acc.reset();
+}
+
+/* ------------------------------------------------------------------ варги */
+group('Варга-карты');
+{
+  // эталонные значения из классических правил построения
+  const cases = [
+    ['D9', 0, 0, 'Меша 0° → Меша (подвижный раши считает от себя)'],
+    ['D9', 30, 9, 'Вришабха 0° → Макара (фиксированный с девятого)'],
+    ['D9', 60, 6, 'Митхуна 0° → Тула (двойственный с пятого)'],
+    ['D9', 29.99, 8, 'конец Меши → Дхану (девятая навамша)'],
+    ['D2', 0, 4, 'Меша 0-15° → Симха (хора Сурьи)'],
+    ['D2', 20, 3, 'Меша 15-30° → Карка (хора Чандры)'],
+    ['D2', 35, 3, 'Вришабха 0-15° → Карка (у чётных наоборот)'],
+    ['D3', 15, 4, 'Меша 10-20° → Симха (пятый)'],
+    ['D3', 25, 8, 'Меша 20-30° → Дхану (девятый)'],
+    ['D30', 7, 10, 'Меша 5-10° → доля Шани → Кумбха'],
+    ['D30', 15, 8, 'Меша 10-18° → доля Гуру → Дхану'],
+    ['D30', 32, 1, 'Вришабха 0-5° → доля Шукры → Вришабха']
+  ];
+  let allOk = true;
+  for (const [code, lon, want, why] of cases) {
+    const got = Vg.vargaRashi(code, lon);
+    if (got !== want) { allOk = false; ok(why, false, `получили ${D.RASHIS[got].sa}`); }
+  }
+  ok(`правила построения варг совпадают с классикой (${cases.length} эталонов)`, allOk);
+
+  ok('каждая варга, кроме хоры и тримшамши, покрывает все 12 раши', (() => {
+    for (const code of Vg.ORDER) {
+      if (code === 'D2' || code === 'D30') continue;
+      const seen = new Set();
+      for (let lon = 0; lon < 360; lon += 0.05) seen.add(Vg.vargaRashi(code, lon));
+      if (seen.size !== 12) return false;
+    }
+    return true;
+  })());
+  ok('хора даёт только Карку и Симху', (() => {
+    const seen = new Set();
+    for (let lon = 0; lon < 360; lon += 0.05) seen.add(Vg.vargaRashi('D2', lon));
+    return seen.size === 2 && seen.has(3) && seen.has(4);
+  })());
+  ok('тримшамша никогда не даёт Карку и Симху', (() => {
+    const seen = new Set();
+    for (let lon = 0; lon < 360; lon += 0.05) seen.add(Vg.vargaRashi('D30', lon));
+    return seen.size === 10 && !seen.has(3) && !seen.has(4);
+  })());
+
+  const vc = chartAt(1975, 6, 15, 6, 0, 55.7558, 37.6176, 'Europe/Moscow');
+  const d9 = Vg.buildVarga(vc, 'D9');
+  ok('навамша: девять грах и двенадцать бхав',
+     Object.keys(d9.grahas).length === 9 && d9.bhavas.length === 12);
+  ok('в навамше каждая граха ровно в одной бхаве', (() => {
+    const n = {}; d9.bhavas.forEach(b => b.grahas.forEach(g => n[g] = (n[g] || 0) + 1));
+    return Object.keys(n).length === 9 && Object.values(n).every(v => v === 1);
+  })());
+
+  ok('вимшопака: веса шадварги в сумме дают 20',
+     Object.values(Vg.VIMSHOPAKA_WEIGHT).reduce((a, b) => a + b, 0) === 20);
+  const vim = Vg.vimshopaka(vc, 'jupiter');
+  ok('вимшопака в диапазоне 0-20 и разложена по шести варгам',
+     vim.score >= 0 && vim.score <= 20 && vim.parts.length === 6);
+  ok('у Раху и Кету вимшопака не считается',
+     Vg.vimshopaka(vc, 'rahu') === null && Vg.vimshopaka(vc, 'ketu') === null);
+  ok('варготтама определяется по совпадению раши в D1 и D9',
+     Vg.vargottama(vc).every(k => Vg.vargaRashi('D9', vc.grahas[k].lon) === vc.grahas[k].rashi));
+}
+
+/* ---------------------------------------------------------- ректификация */
+group('Подсказка по времени рождения');
+{
+  const birth = { date: '1975-06-15',
+    place: { name: 'Москва', lat: 55.7558, lon: 37.6176, tz: 'Europe/Moscow' } };
+  const events = [
+    { type: 'marriage', date: '2001-08-18' },
+    { type: 'child', date: '2004-03-11' },
+    { type: 'job', date: '2009-09-01' },
+    { type: 'move', date: '2014-05-20' }
+  ];
+  ok('у каждого типа события есть бхавы и пояснение',
+     Rt.EVENTS.every(e => e.bhavas.length && e.about && e.title && e.id));
+  ok('все бхавы событий в диапазоне 1-12',
+     Rt.EVENTS.every(e => e.bhavas.every(b => b >= 1 && b <= 12)));
+
+  const t0 = Date.now();
+  const res = Rt.run({ birth, events });
+  const ms = Date.now() - t0;
+  ok(`перебор суток укладывается в секунду (${ms} мс)`, ms < 1000);
+  ok('проверено больше сотни вариантов', res.checked > 100);
+  ok('максимум очков равен числу событий на 16',
+     res.maxPossible === events.length * Rt.MAX_PER_EVENT);
+  ok('очки не превышают максимум',
+     res.candidates.every(c => c.score <= res.maxPossible && c.score >= 0));
+  ok('кандидаты отсортированы по убыванию',
+     res.candidates.every((c, i) => i === 0 || res.candidates[i - 1].score >= c.score));
+  ok('лучший кандидат не хуже любого другого',
+     res.candidates.every(c => res.best.score >= c.score));
+  ok('ровно 12 окон лагн, без дыр и нахлёстов', (() => {
+    const total = res.byLagna.reduce((s2, g) => s2 + (g.to - g.from), 0);
+    return res.byLagna.length === 12 && total === 1440;
+  })());
+  ok('окно через полночь не схлопывается в ноль', (() => {
+    // лагна, захватывающая полночь, должна иметь to > 1440, а не from === to
+    return res.byLagna.every(g => g.to > g.from);
+  })());
+  ok('в списке вариантов нет повторов по минутам', (() => {
+    const m = res.candidates.map(c => c.minutes);
+    return m.length === new Set(m).size;
+  })());
+  ok('у каждого события есть разбор совпадений',
+     res.best.per.length === events.length &&
+     res.best.per.every(p => Array.isArray(p.why) && p.score >= 0));
+  ok('очки события — сумма его совпадений',
+     res.best.per.every(p => p.score === p.why.reduce((s2, w) => s2 + w.w, 0)));
+  ok('окно поиска сужается корректно', (() => {
+    const morning = Rt.run({ birth, events, fromMinutes: 360, toMinutes: 720 });
+    return morning.candidates.every(c => c.minutes >= 360 && c.minutes <= 720);
+  })());
+  ok('без событий расчёт возвращает null', Rt.run({ birth, events: [] }) === null);
+  ok('одинаковый вход даёт одинаковый результат',
+     Rt.run({ birth, events }).best.minutes === res.best.minutes);
 }
 
 /* -------------------------------------- дополнительные проверки пары */

@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Подсказка по времени рождения — Аруна</title>
+<meta name="description" content="Ректификация: перебор времени рождения по минутам и проверка каждого варианта на согласие с событиями вашей жизни.">
+<meta name="theme-color" content="#080b16">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..600;1,400&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/charts.css">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<header class="header" id="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="index.html" aria-label="Аруна — на главную">
+      <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+        <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+      </svg>
+      <span class="logo__text">Аруна</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Меню">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
+    </button>
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="chart.html">Карта и день</a>
+      <a href="compat.html">Совместимость</a>
+      <a href="dialog.html">Диалог</a>
+      <a href="muhurta.html">Выбор времени</a>
+      <a href="rectify.html" aria-current="page">Время рождения</a>
+      <a href="pricing.html">Тарифы</a>
+      <a href="index.html#faq">Вопросы</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Ректификация</p>
+      <h1>Не знаете точного времени рождения</h1>
+      <p class="lede">
+        Расскажите о нескольких событиях, которые точно помните по датам, — и мы
+        переберём время по минутам, проверяя каждый вариант на согласие с ними.
+        Это не доказательство, а сужение круга: вы увидите, какая лагна ложится
+        на вашу жизнь лучше остальных и по каким признакам.
+      </p>
+    </div>
+  </section>
+
+  <section class="section--tight">
+    <div class="wrap layout">
+      <aside class="layout__aside">
+        <form class="panel form-card" id="rectPanel" novalidate>
+          <div class="panel__head" style="margin-bottom:4px">
+            <h2 style="font-size:1.12rem">Рождение</h2>
+          </div>
+          <div class="field">
+            <label for="rDate">Дата рождения</label>
+            <input class="input" type="date" id="rDate" min="1900-01-01" max="2100-12-31" required>
+          </div>
+          <div class="field">
+            <label for="rPlace">Место рождения</label>
+            <input class="input" type="text" id="rPlace" autocomplete="off"
+                   placeholder="Город" role="combobox" aria-expanded="false" aria-controls="rList">
+            <div class="place-list" id="rList" role="listbox"></div>
+          </div>
+          <div class="field">
+            <label for="rWindow">Где искать</label>
+            <select class="input" id="rWindow">
+              <option value="0-1440">Весь день — не знаю даже примерно</option>
+              <option value="0-360">Ночь, 00:00 — 06:00</option>
+              <option value="360-720">Утро, 06:00 — 12:00</option>
+              <option value="720-1080">День, 12:00 — 18:00</option>
+              <option value="1080-1440">Вечер, 18:00 — 24:00</option>
+            </select>
+          </div>
+          <p class="form-error" id="rError" hidden></p>
+          <button class="btn btn--gold btn--block" type="submit">Подобрать время</button>
+          <button class="btn btn--quiet btn--sm" type="button" id="exampleBtn">Показать на примере</button>
+        </form>
+
+        <div class="panel">
+          <h3 style="font-size:1rem;margin-bottom:0.7em">Ваш баланс</h3>
+          <div id="walletBox"></div>
+        </div>
+
+        <div class="panel">
+          <h3 style="font-size:1rem;margin-bottom:0.5em">Как это работает</h3>
+          <p class="tiny muted">
+            Каждое событие относится к своим бхавам: свадьба — к седьмой, работа —
+            к десятой, переезд — к четвёртой. Вариант времени получает очки, если
+            в год события шла даша грахи, которая владеет такой бхавой или стоит
+            в ней, и если по ней же проходили Гуру или Шани.
+          </p>
+          <p class="tiny muted" style="margin-top:0.7em">
+            Чем больше событий вы укажете, тем различимее результат. Три-четыре —
+            уже рабочий минимум, шесть и больше — хорошо.
+          </p>
+        </div>
+      </aside>
+
+      <div class="layout__main">
+        <div class="panel">
+          <div class="panel__head">
+            <h2>События, которые вы точно помните</h2>
+            <button class="btn btn--ghost btn--sm" type="button" id="addEvent">Добавить событие</button>
+          </div>
+          <div id="eventList" class="event-list"></div>
+          <p class="tiny muted" style="margin-top:12px">
+            Дата нужна с точностью до дня. Если помните только месяц — поставьте
+            середину месяца: на результат это влияет слабо, потому что даши и
+            переходы медленных грах длятся месяцами.
+          </p>
+        </div>
+
+        <div id="results"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bottom" style="margin-top:0;border-top:0">
+      <span>© <span id="year">2026</span> Аруна</span>
+      <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+      <a href="index.html">На главную</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/core/astro.js"></script>
+<script src="assets/js/core/access.js"></script>
+<script src="assets/js/core/tz.js"></script>
+<script src="assets/js/data/jyotish-data.js"></script>
+<script src="assets/js/data/cities.js"></script>
+<script src="assets/js/jyotish/chart.js"></script>
+<script src="assets/js/jyotish/dasha.js"></script>
+<script src="assets/js/jyotish/rectify.js"></script>
+<script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/birthform.js"></script>
+<script src="assets/js/ui/paywall.js"></script>
+<script src="assets/js/ui/rectify-page.js"></script>
+</body>
+</html>

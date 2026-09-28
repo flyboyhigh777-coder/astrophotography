@@ -65,9 +65,11 @@
           '<button type="button" data-mode="north" aria-pressed="' + (chartMode === 'north') + '">Северная</button>' +
           '<button type="button" data-mode="south" aria-pressed="' + (chartMode === 'south') + '">Южная</button>' +
           '<button type="button" data-mode="wheel" aria-pressed="' + (chartMode === 'wheel') + '">Круг</button>' +
+          '<button type="button" data-mode="navamsha" aria-pressed="' + (chartMode === 'navamsha') + '">Навамша</button>' +
         '</div>' +
       '</div>' +
       '<div class="chart-box"><div class="chart-box__canvas" id="chartCanvas"></div>' +
+        '<p class="tiny muted" id="chartNote" style="text-align:center;max-width:44ch"></p>' +
         '<p class="tiny muted" style="text-align:center">' +
           S.esc(birth.place.name) + ' · ' +
           S.esc(S.dateRu(state.utcMs, birth.place.tz).replace(/\s*г\.$/, '')) + ', ' +
@@ -80,7 +82,16 @@
   function drawChart(ch) {
     var host = doc.getElementById('chartCanvas');
     if (!host) return;
-    if (chartMode === 'north') host.innerHTML = View.northIndian(ch, 420);
+    var note = doc.getElementById('chartNote');
+    if (note) {
+      note.textContent = chartMode === 'navamsha'
+        ? 'Навамша (D9) — вторая по важности карта: показывает, насколько прочно держится то, что обещает раши-карта.'
+        : '';
+    }
+    if (chartMode === 'navamsha') {
+      host.innerHTML = View.southIndian(root.ArunaVarga.buildVarga(ch, 'D9'), 420);
+    }
+    else if (chartMode === 'north') host.innerHTML = View.northIndian(ch, 420);
     else if (chartMode === 'south') host.innerHTML = View.southIndian(ch, 420);
     else {
       var g = {};
@@ -311,8 +322,16 @@
     var yg = S.Reports.yogas(ch);
     var st = S.Reports.strength(ch);
     var fc = S.Reports.forecast(ch, jdNow);
+    var vg2 = S.Reports.varga(ch);
 
     out.innerHTML =
+      '<div class="print-head">' +
+        '<h1>Джйотиш-карта · ' + S.esc(birth.place.name) + '</h1>' +
+        '<p>' + S.esc(S.dateRu(state.utcMs, birth.place.tz).replace(/\s*г\.$/, '')) + ', ' +
+        S.esc(birth.timeKnown ? S.timeRu(state.utcMs, birth.place.tz) : '12:00 (время неизвестно)') +
+        ' · сидерический зодиак, аянамша Лахири ' + S.esc(ch.ayanamsaDms) +
+        ' · рассчитано на aruna</p>' +
+      '</div>' +
       summaryHtml(ch, birth, cur) +
       chartPanelHtml(ch, birth, built.offsetLabel) +
       day.html +
@@ -322,17 +341,21 @@
       dashaHtml(ch, jdNow) +
       '<div class="section-split" id="reports">' +
         '<h2>Подробные разборы</h2>' +
-        '<p class="muted">Всё выше посчиталось бесплатно. Ниже — то, что требует ' +
-        'долгого разбора: ' + yg.count + ' найденных йог с правилами, соотношение сил ' +
-        'внутри карты и год вперёд по датам.</p>' +
+        '<p class="muted">Всё выше посчиталось бесплатно, включая навамшу. Ниже — то, ' +
+        'что требует долгого разбора: ' + yg.count + ' найденных йог с правилами, ' +
+        'соотношение сил внутри карты, восемь варг с вимшопакой и год вперёд по датам.</p>' +
       '</div>' +
       S.Paywall.section('chart.yogas', yg.full, yg.preview) +
       S.Paywall.section('chart.strength', st.full, st.preview) +
+      S.Paywall.section('chart.varga', vg2.full, vg2.preview) +
       S.Paywall.section('chart.forecast', fc.full, fc.preview);
 
     drawChart(ch);
     S.Paywall.bind(out, function () { render(birth); });
     renderWallet();
+
+    var printBtn = doc.getElementById('printBtn');
+    if (printBtn) printBtn.hidden = false;
 
     S.qa('.chart-switch button', out).forEach(function (b) {
       b.addEventListener('click', function () {
