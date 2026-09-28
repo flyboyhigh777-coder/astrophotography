@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Диалог с Сарати — наставник, который видит вашу карту</title>
+<meta name="description" content="Разговор с опорой на писания: Сарати смотрит на вашу карту и небо дня, помнит прошлые беседы и отвечает по сути.">
+<meta name="theme-color" content="#080b16">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..600;1,400&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/charts.css">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<header class="header" id="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="index.html" aria-label="Сарати — на главную">
+      <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+        <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+      </svg>
+      <span class="logo__text">Сарати</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Меню">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
+    </button>
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="chart.html">Карта и день</a>
+      <a href="compat.html">Совместимость</a>
+      <a href="dialog.html" aria-current="page">Диалог</a>
+      <a href="index.html#platform">Платформа</a>
+      <a href="index.html#faq">Вопросы</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Диалог</p>
+      <h1>Разговор, в котором вас уже знают</h1>
+      <p class="lede">
+        Сарати смотрит на вашу карту и на небо сегодняшнего дня. Не нужно объяснять,
+        кто вы, — можно сразу говорить о главном.
+      </p>
+    </div>
+  </section>
+
+  <section class="section--tight">
+    <div class="wrap layout">
+      <aside class="layout__aside">
+        <div class="panel" id="whoPanel">
+          <h2 style="font-size:1.05rem;margin-bottom:0.6em">С кем он говорит</h2>
+          <dl class="kv" id="whoRows"><dt>Карта</dt><dd>не задана</dd></dl>
+          <div class="hero__actions" style="margin-top:16px">
+            <a class="btn btn--ghost btn--sm" href="chart.html">Изменить карту</a>
+            <button class="btn btn--quiet btn--sm" type="button" id="exampleBtn">Взять пример</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 style="font-size:0.98rem;margin-bottom:0.5em">Честно о демонстрации</h3>
+          <p class="tiny muted">
+            Здесь языковая модель не подключена: ответы собираются из вашей карты, текущей
+            даши и неба дня по правилам — поэтому они действительно разные у разных людей,
+            но их набор конечен. В полной версии на этом месте наставник с языковой моделью
+            и памятью бесед.
+          </p>
+          <p class="tiny muted" style="margin-top:0.7em">
+            История разговора хранится только у вас в браузере.
+            <button class="btn btn--quiet btn--sm" type="button" id="clearBtn" style="padding:0">Очистить</button>
+          </p>
+        </div>
+      </aside>
+
+      <div class="layout__main">
+        <div class="panel">
+          <div class="panel__head">
+            <h2>Сарати</h2>
+            <p class="tiny muted" id="skyLine">—</p>
+          </div>
+          <div class="talk" id="talk" aria-live="polite"></div>
+          <div class="prompts" id="prompts"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bottom" style="margin-top:0;border-top:0">
+      <span>© <span id="year">2026</span> Сарати</span>
+      <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+      <a href="index.html">На главную</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/core/astro.js"></script>
+<script src="assets/js/core/tz.js"></script>
+<script src="assets/js/data/jyotish-data.js"></script>
+<script src="assets/js/data/cities.js"></script>
+<script src="assets/js/data/verses.js"></script>
+<script src="assets/js/jyotish/chart.js"></script>
+<script src="assets/js/jyotish/panchanga.js"></script>
+<script src="assets/js/jyotish/dasha.js"></script>
+<script src="assets/js/ui/chartview.js"></script>
+<script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/birthform.js"></script>
+<script src="assets/js/ui/dialog-page.js"></script>
+</body>
+</html>

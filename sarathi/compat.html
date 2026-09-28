@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Совместимость пары по джйотиш — Сарати</title>
+<meta name="description" content="Сопоставление двух карт по классическим правилам Аштакуты: восемь кут, сильные стороны союза и зоны напряжения — спокойно и по существу, без приговоров.">
+<meta name="theme-color" content="#080b16">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..600;1,400&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/charts.css">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<header class="header" id="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="index.html" aria-label="Сарати — на главную">
+      <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+        <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+      </svg>
+      <span class="logo__text">Сарати</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Меню">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
+    </button>
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="chart.html">Карта и день</a>
+      <a href="compat.html" aria-current="page">Совместимость</a>
+      <a href="dialog.html">Диалог</a>
+      <a href="index.html#platform">Платформа</a>
+      <a href="index.html#faq">Вопросы</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Совместимость</p>
+      <h1>Две карты рядом — без приговоров</h1>
+      <p class="lede">
+        Классическое сопоставление по восьми кутам (Аштакута, 36 гун): где союзу легко,
+        где потребуется внимание и что с этим делать. Сумма гун — не допуск и не запрет,
+        а карта местности.
+      </p>
+    </div>
+  </section>
+
+  <section class="section--tight">
+    <div class="wrap">
+      <form class="panel" id="pairPanel" novalidate>
+        <div class="pair-form">
+          <div class="form-card" id="formA"></div>
+          <div class="form-card" id="formB"></div>
+        </div>
+        <p class="form-error" id="formError" hidden style="margin-top:16px"></p>
+        <div class="hero__actions" style="margin-top:18px">
+          <button class="btn btn--gold" type="submit">Сопоставить карты</button>
+          <button class="btn btn--ghost" type="button" id="exampleBtn">Показать на примере</button>
+        </div>
+        <noscript><p class="form-note">Расчёт идёт в браузере — здесь нужен включённый JavaScript.</p></noscript>
+      </form>
+
+      <div id="results">
+        <div class="empty-state">
+          <h3>Отчёт появится здесь</h3>
+          <p>Заполните обе карты — сопоставление считается мгновенно и остаётся на вашем устройстве.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bottom" style="margin-top:0;border-top:0">
+      <span>© <span id="year">2026</span> Сарати</span>
+      <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+      <a href="index.html">На главную</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/core/astro.js"></script>
+<script src="assets/js/core/tz.js"></script>
+<script src="assets/js/data/jyotish-data.js"></script>
+<script src="assets/js/data/cities.js"></script>
+<script src="assets/js/data/verses.js"></script>
+<script src="assets/js/jyotish/chart.js"></script>
+<script src="assets/js/jyotish/panchanga.js"></script>
+<script src="assets/js/jyotish/ashtakoota.js"></script>
+<script src="assets/js/ui/chartview.js"></script>
+<script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/birthform.js"></script>
+<script src="assets/js/ui/compat-page.js"></script>
+</body>
+</html>

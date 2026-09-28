@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сарати — помощник по ведическим писаниям, который знает вашу карту рождения</title>
+<meta name="description" content="Сарати рассчитывает вашу джйотиш-карту по дате, времени и месту рождения: ведический гороскоп дня, совместимость пары и диалог с наставником — всё вокруг вашей карты, а не вокруг «знака месяца».">
+<meta name="theme-color" content="#080b16">
+<script>document.documentElement.classList.add('js');</script>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Сарати — джйотиш, шастры и живой диалог">
+<meta property="og:description" content="Гороскоп дня по вашей карте, разбор совместимости и наставник, который помнит ваши беседы.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..600;1,400&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/charts.css">
+<link rel="stylesheet" href="assets/css/landing.css">
+</head>
+<body>
+<a class="visually-hidden" href="#main">Перейти к содержанию</a>
+
+<header class="header" id="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="index.html" aria-label="Сарати — на главную">
+      <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+        <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+        <circle cx="26.3" cy="21.6" r="1.4" fill="rgba(154,134,224,.9)"/>
+        <circle cx="6.4" cy="22.4" r="1.1" fill="rgba(116,199,184,.9)"/>
+      </svg>
+      <span class="logo__text">Сарати</span>
+    </a>
+
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Меню">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M3 6h16M3 11h16M3 16h16"/>
+      </svg>
+    </button>
+
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="#jyotish">Джйотиш</a>
+      <a href="#shastry">Шастры</a>
+      <a href="#dialog">Диалог</a>
+      <a href="#platform">Платформа</a>
+      <a href="#faq">Вопросы</a>
+      <a class="btn btn--gold btn--sm" href="chart.html">Построить карту</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ============================================================ герой -->
+<section class="hero">
+  <canvas class="starfield" id="stars" aria-hidden="true"></canvas>
+  <div class="wrap hero__inner">
+    <div class="hero__text">
+      <p class="eyebrow">Джйотиш · Шастры · Диалог</p>
+      <h1>Помощник по ведическим писаниям, <br>который знает вашу карту рождения</h1>
+      <p class="lede">
+        <strong>Сарати</strong> рассчитывает вашу джйотиш-карту по дате, времени и месту
+        рождения. Дальше каждый гороскоп, каждый стих писаний и каждый разговор с
+        наставником построен вокруг вас&nbsp;— а не вокруг «знака месяца».
+      </p>
+      <div class="hero__actions">
+        <a class="btn btn--gold" href="chart.html">
+          Построить карту
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5"/>
+          </svg>
+        </a>
+        <a class="btn btn--ghost" href="#dialog">Посмотреть, как отвечает Сарати</a>
+      </div>
+      <ul class="hero__facts">
+        <li>Сидерический зодиак, аянамша Лахири</li>
+        <li>Бхавы целыми раши, как в классике</li>
+        <li>Расчёт идёт в вашем браузере</li>
+      </ul>
+    </div>
+
+    <aside class="sky-card" id="skyCard" aria-label="Небо прямо сейчас">
+      <header class="sky-card__head">
+        <div>
+          <p class="sky-card__label">Небо прямо сейчас</p>
+          <p class="sky-card__date" id="skyDate">—</p>
+        </div>
+        <span class="chip chip--gold" id="skyPlace">—</span>
+      </header>
+      <div class="sky-card__wheel" id="skyWheel"></div>
+      <dl class="sky-card__rows" id="skyRows"></dl>
+      <footer class="sky-card__foot">
+        <p class="tiny muted" id="skyNote">Считается у вас на устройстве, по местному времени.</p>
+      </footer>
+    </aside>
+  </div>
+</section>
+
+<!-- ================================================ что умеет помощник -->
+<section class="section" id="jyotish">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Что умеет помощник</p>
+      <h2>Три опоры: гороскоп, совместимость и живой диалог</h2>
+      <p class="lede">
+        Одна карта — три разных разговора о ней. Небо дня, отношения и вопросы,
+        которые сложно задать вслух: всё считается от вашего рождения.
+      </p>
+    </div>
+
+    <div class="three">
+      <article class="card card--hover feature reveal">
+        <span class="chip chip--gold">Каждый день — заново по небу</span>
+        <h3>Ведический гороскоп дня</h3>
+        <p>
+          Небо дня над вашей картой: положение грах, накшатра, мухурта — и стих
+          Бхагавад-гиты или Шримад-Бхагаватам, выбранный по времени. Расчёт от
+          вашего рождения, а не общий прогноз.
+        </p>
+        <svg class="feature__art" viewBox="0 0 220 96" aria-hidden="true">
+          <path d="M6 70c26-40 52-40 78 0s52 40 78 0 26-40 52-26" fill="none" stroke="rgba(224,180,101,.4)" stroke-width="1.2"/>
+          <circle cx="45" cy="47" r="4.5" fill="var(--gold)"/>
+          <circle cx="123" cy="47" r="3" fill="rgba(154,134,224,.9)"/>
+          <circle cx="188" cy="55" r="2.4" fill="rgba(116,199,184,.9)"/>
+          <g stroke="rgba(255,255,255,.14)" stroke-width="1">
+            <path d="M6 82h208"/><path d="M45 82v-8M123 82v-8M188 82v-8"/>
+          </g>
+        </svg>
+        <a class="btn btn--quiet" href="chart.html">Открыть гороскоп дня →</a>
+      </article>
+
+      <article class="card card--hover feature reveal">
+        <span class="chip chip--violet">Глубокий парный отчёт</span>
+        <h3>Совместимость пары</h3>
+        <p>
+          Подробный разбор двух карт по классическим правилам сопоставления:
+          сильные стороны союза, зоны напряжения и как с ними обходиться.
+          Спокойно и по существу, без «приговоров».
+        </p>
+        <svg class="feature__art" viewBox="0 0 220 96" aria-hidden="true">
+          <circle cx="86" cy="48" r="30" fill="rgba(224,180,101,.08)" stroke="rgba(224,180,101,.45)"/>
+          <circle cx="134" cy="48" r="30" fill="rgba(154,134,224,.10)" stroke="rgba(154,134,224,.5)"/>
+          <path d="M110 22v52" stroke="rgba(255,255,255,.18)" stroke-dasharray="3 4"/>
+        </svg>
+        <a class="btn btn--quiet" href="compat.html">Сопоставить две карты →</a>
+      </article>
+
+      <article class="card card--hover feature reveal">
+        <span class="chip chip--teal">Знает ваш контекст</span>
+        <h3>Сарати — наставник-собеседник</h3>
+        <p>
+          Диалог с опорой на писания. Сарати видит вашу карту, помнит прошлые
+          беседы и отвечает по сути — как внимательный наставник, а не безликий
+          чат-бот.
+        </p>
+        <svg class="feature__art" viewBox="0 0 220 96" aria-hidden="true">
+          <rect x="18" y="20" width="112" height="30" rx="14" fill="rgba(255,255,255,.055)" stroke="rgba(255,255,255,.14)"/>
+          <rect x="74" y="58" width="128" height="30" rx="14" fill="rgba(224,180,101,.10)" stroke="rgba(224,180,101,.4)"/>
+          <g fill="rgba(255,255,255,.34)"><circle cx="40" cy="35" r="2.6"/><circle cx="52" cy="35" r="2.6"/><circle cx="64" cy="35" r="2.6"/></g>
+          <g fill="rgba(244,221,169,.75)"><circle cx="100" cy="73" r="2.6"/><circle cx="112" cy="73" r="2.6"/><circle cx="124" cy="73" r="2.6"/></g>
+        </svg>
+        <a class="btn btn--quiet" href="dialog.html">Начать разговор →</a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================= шастры / стих -->
+<section class="section section--tight" id="shastry">
+  <div class="wrap">
+    <div class="scripture reveal" id="verseBlock">
+      <p class="eyebrow">Шастры</p>
+      <h2>Стих выбирается небом, а не случайностью</h2>
+      <p class="lede">
+        Хозяин дня, накшатра Луны и фаза — по ним подбирается стих из Бхагавад-гиты
+        или Шримад-Бхагаватам. Под стихом всегда видно, почему именно он: это правило,
+        а не лотерея.
+      </p>
+      <figure class="verse" id="verseCard">
+        <blockquote class="verse__sa" id="verseSa">—</blockquote>
+        <p class="verse__ru" id="verseRu">—</p>
+        <figcaption class="verse__meta">
+          <cite id="verseRef">—</cite>
+          <span class="verse__why" id="verseWhy"></span>
+        </figcaption>
+      </figure>
+      <p class="tiny muted">
+        Перевод — смысловой, сделан для этого сайта. Санскрит дан в транслитерации IAST.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== пример диалога -->
+<section class="section" id="dialog">
+  <div class="wrap dialog-grid">
+    <div class="sec-head sec-head--left">
+      <p class="eyebrow">Пример диалога</p>
+      <h2>Разговор, в котором вас уже знают</h2>
+      <p class="lede">
+        Сарати отвечает, глядя на вашу карту и небо дня. Не нужно объяснять, кто
+        вы, — можно сразу говорить о главном.
+      </p>
+      <ul class="ticks">
+        <li>видит вашу карту и транзиты на сегодня</li>
+        <li>помнит, о чём вы говорили раньше</li>
+        <li>опирается на писания, а не на общие слова</li>
+      </ul>
+      <a class="btn btn--ghost" href="dialog.html">Попробовать диалог</a>
+    </div>
+
+    <div class="chat" id="chat" aria-label="Пример переписки с наставником">
+      <div class="chat__msg chat__msg--me">
+        <p>Тяжёлая неделя. Никак не решусь на переезд — всё откладываю.</p>
+      </div>
+      <div class="chat__msg chat__msg--sarathi">
+        <p class="chat__who">Сарати <span class="chat__badge">видит вашу карту</span></p>
+        <p>
+          Луна сейчас проходит вашу четвёртую бхаву — тему дома. Сомнения в такие
+          дни естественны, и торопиться не нужно. Давайте разберём, что держит на
+          самом деле: страх потери или привязанность к месту?
+        </p>
+      </div>
+      <div class="chat__msg chat__msg--me chat__msg--late">
+        <p>Скорее второе. Там прошло почти всё, что я помню о себе.</p>
+      </div>
+      <div class="chat__msg chat__msg--sarathi chat__msg--late">
+        <p class="chat__who">Сарати <span class="chat__badge">Чандра в 4-й бхаве</span></p>
+        <p>
+          Тогда это не про решительность, а про благодарность и прощание. В карте
+          четвёртая бхава — корни; их не обрубают, их берут с собой. Назовите три
+          вещи, которые поедут с вами, — и решение станет проще.
+        </p>
+      </div>
+      <p class="chat__note tiny muted">Пример разговора. В вашем аккаунте на месте цитат — ваши настоящие положения грах.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================== как это работает -->
+<section class="section" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Как это работает</p>
+      <h2>От рождения — к разговору</h2>
+    </div>
+    <ol class="steps">
+      <li class="step reveal">
+        <span class="step__num">1</span>
+        <h3>Укажите рождение</h3>
+        <p>Дата, время и место — этого достаточно. Точное время можно уточнить позже.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step__num">2</span>
+        <h3>Мы строим карту</h3>
+        <p>Положения грах, бхавы, накшатры — по классическим правилам джйотиш, сидерический зодиак.</p>
+      </li>
+      <li class="step reveal">
+        <span class="step__num">3</span>
+        <h3>Помощник говорит с вами</h3>
+        <p>Гороскоп, совместимость и диалог с Сарати опираются на вашу карту — с первого дня.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ========================================================== платформа -->
+<section class="section" id="platform">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow">Платформа</p>
+      <h2>Что ещё внутри</h2>
+      <p class="lede">
+        Помощник — часть учебной платформы. Всё в одном аккаунте, без лишних приложений.
+      </p>
+    </div>
+    <div class="grid-6">
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5v-13Z"/>
+          <path d="M20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5A1.5 1.5 0 0 0 20 18.5v-13Z"/>
+        </svg>
+        <h3>Курсы по писаниям</h3>
+        <p>Бхагавад-гита и другие тексты — шаг за шагом, с проверкой понимания.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M12 4a5 5 0 0 0-5 5c0 1.6.8 2.6 1.4 3.4.5.7.6 1.3.6 2.1V16h6v-1.5c0-.8.1-1.4.6-2.1C16.2 11.6 17 10.6 17 9a5 5 0 0 0-5-5Z"/>
+          <path d="M10 19h4M10.5 21.5h3"/>
+        </svg>
+        <h3>Тренажёр ума</h3>
+        <p>Ежедневные упражнения на память и внимание, батлы с другими учениками.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <circle cx="12" cy="5" r="2.4"/><circle cx="5.5" cy="18.5" r="2.4"/><circle cx="18.5" cy="18.5" r="2.4"/>
+          <path d="M12 7.4v4.2M12 11.6H5.5v4.5M12 11.6h6.5v4.5"/>
+        </svg>
+        <h3>Семейное древо</h3>
+        <p>Соберите историю рода и поделитесь ею с близкими.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path d="M12 3v12M12 18.5a2.5 2.5 0 1 1-2.5-2.5"/>
+          <path d="M16 6.5c2 .6 3.4 2 3.6 4M16 3c3.6.8 5.8 3.4 6 7"/>
+        </svg>
+        <h3>Хинди с озвучкой</h3>
+        <p>Разговорный курс с живым произношением и микрофонной практикой.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.2"/><path d="M12 7.4V12l3.2 2"/>
+        </svg>
+        <h3>Мухурта</h3>
+        <p>Благоприятное время для начинаний — по небу текущего дня.</p>
+      </article>
+      <article class="card card--hover tile reveal">
+        <svg class="tile__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="2.6"/><circle cx="16.5" cy="9.5" r="2.2"/>
+          <path d="M4 19c0-2.5 2-4.5 4.5-4.5S13 16.5 13 19M14.5 19c0-2 1.2-3.6 3-4"/>
+        </svg>
+        <h3>Школы и группы</h3>
+        <p>Учитесь вместе: школы со своими курсами и наставниками.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ вопросы -->
+<section class="section" id="faq">
+  <div class="wrap faq-grid">
+    <div class="sec-head sec-head--left">
+      <p class="eyebrow">Вопросы</p>
+      <h2>Коротко о главном</h2>
+      <p class="lede">Если чего-то не нашли — спросите Сарати, он ответит и про сам сервис.</p>
+    </div>
+    <div class="faq">
+      <details class="faq__item" open>
+        <summary>Это бесплатно?</summary>
+        <div class="faq__body">
+          <p>
+            Регистрация и основные разделы бесплатны. Расширенные отчёты — например,
+            подробный разбор совместимости пары — оплачиваются внутренней валютой,
+            мудрами. Подробнее — в тарифах.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Я не знаю точного времени рождения</summary>
+        <div class="faq__body">
+          <p>
+            Начните с приблизительного: раши грах и накшатра Луны почти не изменятся.
+            Сильнее всего от минут зависит лагна — её и уточните позже, когда найдёте
+            справку или спросите родных. Карту можно пересчитать в любой момент.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>По какой системе считается карта?</summary>
+        <div class="faq__body">
+          <p>
+            Сидерический (нираяна) зодиак, аянамша Лахири — читрапакша. Бхавы берутся
+            целыми раши, как в классической индийской традиции: первая бхава — весь
+            раши лагны. Раху и Кету — средние узлы Луны.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Астрология — и писания. Это не противоречие?</summary>
+        <div class="faq__body">
+          <p>
+            Джйотиш в традиции — веданга, вспомогательная часть Вед: она говорит о
+            времени и о склонностях, а не о приговоре. Поэтому здесь карта всегда
+            рядом со стихом: небо показывает обстоятельства, писание — как в них
+            держаться.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Что происходит с моими данными?</summary>
+        <div class="faq__body">
+          <p>
+            Дата, время и место рождения нужны только для расчёта карты. На страницах
+            этого сайта расчёт целиком идёт в браузере: введённое остаётся на вашем
+            устройстве и не уходит на сервер.
+          </p>
+        </div>
+      </details>
+      <details class="faq__item">
+        <summary>Сарати заменяет живого наставника?</summary>
+        <div class="faq__body">
+          <p>
+            Нет. Он помогает готовиться к разговору с человеком: собирает вашу карту,
+            находит стих, задаёт вопросы, которые вы сами себе не задали. Решения
+            остаются за вами — и за теми, кому вы доверяете.
+          </p>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== финальный CTA -->
+<section class="section cta">
+  <div class="wrap cta__inner">
+    <p class="divider-star" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+        <path d="M9 1.5 10.6 7 16 9l-5.4 2L9 16.5 7.4 11 2 9l5.4-2z" fill="currentColor"/>
+      </svg>
+    </p>
+    <h2>Начните с карты — остальное вырастет из неё</h2>
+    <p class="lede">
+      Дата, время и место рождения. Дальше гороскоп дня, разбор пары и диалог с
+      наставником будут говорить именно о вас.
+    </p>
+    <div class="hero__actions hero__actions--center">
+      <a class="btn btn--gold" href="chart.html">Построить карту</a>
+      <a class="btn btn--ghost" href="compat.html">Сопоставить две карты</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__grid">
+      <div>
+        <a class="logo" href="index.html">
+          <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+            <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+            <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+            <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+          </svg>
+          <span class="logo__text">Сарати</span>
+        </a>
+        <p class="small muted" style="margin-top:14px;max-width:34ch">
+          Помощник по ведическим писаниям, который знает вашу карту рождения.
+        </p>
+      </div>
+      <div>
+        <h4>Помощник</h4>
+        <ul>
+          <li><a href="chart.html">Гороскоп дня</a></li>
+          <li><a href="compat.html">Совместимость пары</a></li>
+          <li><a href="dialog.html">Диалог с Сарати</a></li>
+          <li><a href="chart.html#muhurta">Мухурта</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Платформа</h4>
+        <ul>
+          <li><a href="#platform">Курсы по писаниям</a></li>
+          <li><a href="#platform">Тренажёр ума</a></li>
+          <li><a href="#platform">Семейное древо</a></li>
+          <li><a href="#platform">Хинди с озвучкой</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Ещё</h4>
+        <ul>
+          <li><a href="#faq">Вопросы</a></li>
+          <li><a href="#faq">Тарифы и мудры</a></li>
+          <li><a href="#shastry">Как выбирается стих</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer__bottom">
+      <span>© <span id="year">2026</span> Сарати</span>
+      <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/core/astro.js"></script>
+<script src="assets/js/core/tz.js"></script>
+<script src="assets/js/data/jyotish-data.js"></script>
+<script src="assets/js/data/verses.js"></script>
+<script src="assets/js/jyotish/chart.js"></script>
+<script src="assets/js/jyotish/panchanga.js"></script>
+<script src="assets/js/data/cities.js"></script>
+<script src="assets/js/ui/chartview.js"></script>
+<script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/landing.js"></script>
+</body>
+</html>

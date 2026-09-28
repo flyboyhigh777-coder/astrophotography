@@ -1,0 +1,42 @@
+/* Сарати · вид SVG-карт: колесо зодиака и две традиционные сетки.
+   Подключается на всех страницах, где рисуется карта. */
+
+.wheel { display: block; width: 100%; height: auto; }
+.wheel__ring   { fill: none; stroke: var(--line-2); }
+.wheel__spoke  { stroke: var(--line); stroke-width: 1; }
+.wheel__nak    { stroke: rgba(224, 180, 101, 0.30); stroke-width: 1; }
+.wheel__tick   { stroke-width: 2; opacity: 0.8; }
+.wheel__rashi {
+  fill: var(--ink-3); font: 500 10.5px/1 var(--sans);
+  letter-spacing: 0.04em; text-anchor: middle;
+}
+.wheel__num    { fill: var(--ink-4); font: 500 8px/1 var(--mono); text-anchor: middle; }
+.wheel__asc    { stroke: var(--gold); stroke-width: 1.4; stroke-dasharray: 5 4; }
+.wheel__asclabel { fill: var(--gold); font: 600 10px/1 var(--sans); text-anchor: middle; }
+.wheel__graha circle { stroke-width: 1.4; }
+.wheel__graha text   { font: 600 10px/1 var(--sans); text-anchor: middle; }
+.wheel__retro  { fill: var(--ember); font: 700 8px/1 var(--sans); text-anchor: middle; }
+
+.grid-chart { display: block; width: 100%; height: auto; }
+.grid-chart__frame { fill: rgba(255, 255, 255, 0.022); stroke: var(--line-2); }
+.grid-chart__line  { stroke: var(--line); stroke-width: 1; }
+.grid-chart__cell  { fill: transparent; stroke: none; }
+.grid-chart__cell.is-lagna { fill: rgba(224, 180, 101, 0.10); }
+.grid-chart__corner {
+  fill: var(--ink-4); font: 500 9.5px/1 var(--sans);
+  text-anchor: middle; letter-spacing: 0.03em;
+}
+.grid-chart__graha {
+  fill: var(--ink); font: 500 11px/1 var(--sans); text-anchor: middle;
+}
+
+/* переключатель вида карты */
+.chart-switch { display: inline-flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
+.chart-switch button {
+  font: inherit; font-size: 0.84rem; font-weight: 550;
+  padding: 0.42em 0.95em; border-radius: 999px;
+  background: transparent; border: 0; color: var(--ink-3); cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.chart-switch button:hover { color: var(--ink); }
+.chart-switch button[aria-pressed='true'] { background: var(--surface-3); color: var(--gold-soft); }
