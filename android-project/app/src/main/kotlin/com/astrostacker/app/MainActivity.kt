@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -67,6 +68,11 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize()
                         .background(Brush.verticalGradient(listOf(VoidIndigo, VoidNavy, VoidNavy)))
                 ) {
+                    // Раньше был Surface(contentColor=...), который прокидывал белый
+                    // цвет текста по умолчанию всем экранам через LocalContentColor -
+                    // голый Box этого не делает, без этого текст без явного color
+                    // рисуется чёрным и пропадает на тёмном фоне.
+                    CompositionLocalProvider(LocalContentColor provides TextWhite) {
                     Column(Modifier.fillMaxSize()) {
                         Box(Modifier.weight(1f)) {
                             when (tab) {
@@ -101,6 +107,7 @@ class MainActivity : ComponentActivity() {
                                 colors = navColors()
                             )
                         }
+                    }
                     }
                 }
             }
