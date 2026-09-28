@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="night_black">#0A0A0C</color>
+    <color name="night_black">#0B0B17</color>
     <color name="accent_red">#FF4545</color>
 
-    <color name="ic_launcher_background">#0A0A0C</color>
+    <color name="ic_launcher_background">#0B0B17</color>
 </resources>

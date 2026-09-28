@@ -45,6 +45,7 @@ import com.astrostacker.app.SaveState
 import com.astrostacker.app.data.ExportFormat
 import com.astrostacker.core.pano.PanoProjection
 import com.astrostacker.core.pano.PanoStage
+import com.astrostacker.app.ui.theme.GradientTopBar
 
 /** Вкладка "Панорама": переключает экраны по [PanoScreen]. */
 @Composable
@@ -85,7 +86,7 @@ private fun PanoPickerScreen(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.pano_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.pano_title))
             Text(stringResource(R.string.pano_instructions), style = MaterialTheme.typography.bodyMedium)
             Text(
                 stringResource(R.string.app_version, com.astrostacker.app.BuildConfig.VERSION_NAME),
@@ -131,7 +132,7 @@ private fun PanoPickerScreen(
             if (state.photos.size < 2) {
                 Text(
                     stringResource(R.string.pano_min_photos),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.tertiary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -153,7 +154,7 @@ private fun PanoProcessingScreen(state: PanoScreen.Processing, onCancel: () -> U
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(stringResource(R.string.pano_processing_title), style = MaterialTheme.typography.headlineSmall)
+        GradientTopBar(stringResource(R.string.pano_processing_title))
         Spacer(Modifier.height(24.dp))
         Text(
             stringResource(
@@ -198,7 +199,7 @@ private fun PanoResultScreen(
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.pano_result_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.pano_result_title))
             Image(
                 bitmap = image,
                 contentDescription = stringResource(R.string.pano_result_title),
@@ -221,7 +222,7 @@ private fun PanoResultScreen(
                 Text(
                     stringResource(R.string.pano_result_skipped, state.totalCount - state.includedCount),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
 
@@ -270,7 +271,7 @@ private fun PanoResultScreen(
                 }
             }
             when (state.saveState) {
-                SaveState.Success -> Text(stringResource(R.string.result_save_success), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                SaveState.Success -> Text(stringResource(R.string.result_save_success), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodyMedium)
                 SaveState.Failed -> Text(stringResource(R.string.result_save_error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 else -> Unit
             }

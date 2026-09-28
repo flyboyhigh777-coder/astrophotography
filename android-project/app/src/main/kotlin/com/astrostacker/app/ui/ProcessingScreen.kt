@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.astrostacker.app.R
 import com.astrostacker.core.ProgressUpdate
 import com.astrostacker.core.Stage
+import com.astrostacker.app.ui.theme.GradientTopBar
 
 /** Порядок стадий для общего (сквозного по всему пайплайну) прогресс-бара - см. [overallFraction]. */
 private val STAGE_ORDER = listOf(
@@ -34,7 +35,7 @@ fun ProcessingScreen(progress: ProgressUpdate, onCancel: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(stringResource(R.string.processing_title), style = MaterialTheme.typography.headlineSmall)
+        GradientTopBar(stringResource(R.string.processing_title))
         Spacer(Modifier.height(24.dp))
 
         Text(stageLabel(progress.stage), style = MaterialTheme.typography.titleMedium)

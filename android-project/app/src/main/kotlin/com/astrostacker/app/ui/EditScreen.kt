@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.astrostacker.app.R
 import com.astrostacker.app.EditorUiState
 import com.astrostacker.core.CropRect
+import com.astrostacker.app.ui.theme.GradientTopBar
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
@@ -72,7 +73,7 @@ fun EditScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.edit_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.edit_title))
 
             Box(
                 modifier = Modifier
@@ -174,7 +175,7 @@ private fun CropOverlay(
     val currentCrop by rememberUpdatedState(crop)
     val currentRatio by rememberUpdatedState(aspectRatio)
     val currentOnChange by rememberUpdatedState(onCropChange)
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = MaterialTheme.colorScheme.tertiary
 
     Canvas(
         modifier = modifier.pointerInput(Unit) {

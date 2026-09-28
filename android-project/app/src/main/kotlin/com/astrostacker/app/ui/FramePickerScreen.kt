@@ -31,6 +31,7 @@ import com.astrostacker.app.ErrorMessage
 import com.astrostacker.app.R
 import com.astrostacker.app.RECOMMENDED_MAX_FRAMES
 import com.astrostacker.app.ScreenState
+import com.astrostacker.app.ui.theme.GradientTopBar
 
 /**
  * Первый экран: серия световых кадров (обязательно) и, по желанию,
@@ -62,7 +63,7 @@ fun FramePickerScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.picker_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.picker_title))
             Text(stringResource(R.string.picker_instructions), style = MaterialTheme.typography.bodyMedium)
             Text(
                 stringResource(R.string.app_version, com.astrostacker.app.BuildConfig.VERSION_NAME),
@@ -86,7 +87,7 @@ fun FramePickerScreen(
                 Text(
                     stringResource(R.string.picker_too_many_frames, RECOMMENDED_MAX_FRAMES),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
 
@@ -130,7 +131,7 @@ fun FramePickerScreen(
             if (state.lightFrames.size < 2) {
                 Text(
                     stringResource(R.string.picker_min_frames_warning),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.tertiary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -161,7 +162,7 @@ private fun CalibrationPicker(title: String, hint: String, count: Int, onSelecte
                 Text(
                     stringResource(R.string.picker_calibration_count, count),
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (count > 0) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

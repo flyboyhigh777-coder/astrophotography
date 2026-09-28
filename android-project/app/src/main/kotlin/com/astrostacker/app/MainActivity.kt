@@ -5,17 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Surface
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
@@ -31,6 +33,12 @@ import com.astrostacker.app.ui.AstroStackerRoot
 import com.astrostacker.app.ui.PanoramaRoot
 import com.astrostacker.app.ui.TrailRoot
 import com.astrostacker.app.ui.theme.AstroStackerTheme
+import com.astrostacker.app.ui.theme.GlassFill
+import com.astrostacker.app.ui.theme.SegmentSelected
+import com.astrostacker.app.ui.theme.TextMuted
+import com.astrostacker.app.ui.theme.TextWhite
+import com.astrostacker.app.ui.theme.VoidIndigo
+import com.astrostacker.app.ui.theme.VoidNavy
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -52,12 +60,20 @@ class MainActivity : ComponentActivity() {
         setContent {
             AstroStackerTheme {
                 var tab by rememberSaveable { mutableIntStateOf(0) }
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background,
-                    contentColor = MaterialTheme.colorScheme.onBackground
+                // Ночное небо: тёмно-синий -> фиолетовый -> почти чёрный градиент
+                // вместо плоской чёрной заливки (см. референс) - виден сквозь все
+                // экраны, т.к. сами они прозрачные поверх этого фона.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(listOf(VoidIndigo, VoidNavy, VoidNavy)))
                 ) {
-                    Column {
+                    // Раньше был Surface(contentColor=...), который прокидывал белый
+                    // цвет текста по умолчанию всем экранам через LocalContentColor -
+                    // голый Box этого не делает, без этого текст без явного color
+                    // рисуется чёрным и пропадает на тёмном фоне.
+                    CompositionLocalProvider(LocalContentColor provides TextWhite) {
+                    Column(Modifier.fillMaxSize()) {
                         Box(Modifier.weight(1f)) {
                             when (tab) {
                                 0 -> AstroStackerRoot(astroViewModel)
@@ -65,32 +81,48 @@ class MainActivity : ComponentActivity() {
                                 else -> TrailRoot(trailViewModel)
                             }
                         }
-                        NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+                        NavigationBar(
+                            containerColor = GlassFill,
+                            contentColor = TextWhite
+                        ) {
                             NavigationBarItem(
                                 selected = tab == 0,
                                 onClick = { tab = 0 },
                                 icon = { StarIcon() },
-                                label = { Text(stringResource(R.string.tab_astro)) }
+                                label = { Text(stringResource(R.string.tab_astro)) },
+                                colors = navColors()
                             )
                             NavigationBarItem(
                                 selected = tab == 1,
                                 onClick = { tab = 1 },
                                 icon = { PanoramaIcon() },
-                                label = { Text(stringResource(R.string.tab_panorama)) }
+                                label = { Text(stringResource(R.string.tab_panorama)) },
+                                colors = navColors()
                             )
                             NavigationBarItem(
                                 selected = tab == 2,
                                 onClick = { tab = 2 },
                                 icon = { TrailIcon() },
-                                label = { Text(stringResource(R.string.tab_trails)) }
+                                label = { Text(stringResource(R.string.tab_trails)) },
+                                colors = navColors()
                             )
                         }
+                    }
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun navColors() = NavigationBarItemDefaults.colors(
+    selectedIconColor = TextWhite,
+    selectedTextColor = TextWhite,
+    unselectedIconColor = TextMuted,
+    unselectedTextColor = TextMuted,
+    indicatorColor = SegmentSelected.copy(alpha = 0.22f)
+)
 
 @Composable
 private fun StarIcon() {

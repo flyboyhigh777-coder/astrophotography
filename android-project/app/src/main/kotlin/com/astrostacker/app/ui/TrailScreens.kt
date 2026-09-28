@@ -69,6 +69,8 @@ import com.astrostacker.app.data.TrailExifSummary
 import com.astrostacker.core.StackingOrder
 import com.astrostacker.core.StarTrailConfig
 import com.astrostacker.core.TrailStyle
+import com.astrostacker.app.ui.theme.GlassCard
+import com.astrostacker.app.ui.theme.GradientTopBar
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -113,7 +115,7 @@ private fun TrailPickerScreen(state: TrailScreen.Picking, vm: StarTrailViewModel
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.trail_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.trail_title))
             Text(stringResource(R.string.trail_instructions), style = MaterialTheme.typography.bodyMedium)
             Text(
                 stringResource(R.string.app_version, com.astrostacker.app.BuildConfig.VERSION_NAME),
@@ -152,7 +154,7 @@ private fun TrailPickerScreen(state: TrailScreen.Picking, vm: StarTrailViewModel
             if (state.photos.size < 2) {
                 Text(
                     stringResource(R.string.trail_min_photos),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.tertiary,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -176,7 +178,7 @@ private fun TrailProcessingScreen(state: TrailScreen.Processing, onCancel: () ->
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(stringResource(R.string.trail_processing_title), style = MaterialTheme.typography.headlineSmall)
+        GradientTopBar(stringResource(R.string.trail_processing_title))
         Spacer(Modifier.height(24.dp))
         Text(
             stringResource(if (p.stage == TrailStage.LOAD) R.string.trail_stage_load else R.string.trail_stage_combine),
@@ -266,7 +268,7 @@ private fun TrailResultScreen(
             modifier = Modifier.weight(1f).verticalScroll(scrollState).padding(horizontal = 24.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(stringResource(R.string.trail_result_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.trail_result_title))
             Image(
                 bitmap = image,
                 contentDescription = stringResource(R.string.trail_result_title),
@@ -301,7 +303,7 @@ private fun TrailResultScreen(
                 }
             }
             when (state.saveState) {
-                SaveState.Success -> Text(stringResource(R.string.result_save_success), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                SaveState.Success -> Text(stringResource(R.string.result_save_success), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodyMedium)
                 SaveState.Failed -> Text(stringResource(R.string.result_save_error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
                 else -> Unit
             }
@@ -330,41 +332,55 @@ private fun TrailOptionsScreen(initial: StarTrailConfig, onApply: (StarTrailConf
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            Text(stringResource(R.string.trail_options_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.trail_options_title))
 
-            Text(stringResource(R.string.trail_order_title), style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChoiceChip(stringResource(R.string.trail_order_chronological), draft.order == StackingOrder.CHRONOLOGICAL) {
-                    draft = draft.copy(order = StackingOrder.CHRONOLOGICAL)
-                }
-                ChoiceChip(stringResource(R.string.trail_order_reverse), draft.order == StackingOrder.REVERSE) {
-                    draft = draft.copy(order = StackingOrder.REVERSE)
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.trail_order_title), style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ChoiceChip(stringResource(R.string.trail_order_chronological), draft.order == StackingOrder.CHRONOLOGICAL) {
+                            draft = draft.copy(order = StackingOrder.CHRONOLOGICAL)
+                        }
+                        ChoiceChip(stringResource(R.string.trail_order_reverse), draft.order == StackingOrder.REVERSE) {
+                            draft = draft.copy(order = StackingOrder.REVERSE)
+                        }
+                    }
                 }
             }
 
-            Text(stringResource(R.string.trail_style_title), style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                for (style in TrailStyle.values()) {
-                    TrailStyleCard(style, draft.style == style) { draft = draft.copy(style = style) }
-                }
-            }
-            Text(trailStyleHint(draft.style), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-            Text(stringResource(R.string.trail_resolution_title), style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                val presets = listOf<Int?>(null, 2048, 1536, 1024)
-                for (preset in presets) {
-                    val label = preset?.let { "$it " + stringResource(R.string.px_suffix) } ?: stringResource(R.string.trail_resolution_original)
-                    ChoiceChip(label, draft.maxOutputSide == preset) { draft = draft.copy(maxOutputSide = preset) }
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.trail_style_title), style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                        for (style in TrailStyle.values()) {
+                            TrailStyleCard(style, draft.style == style) { draft = draft.copy(style = style) }
+                        }
+                    }
+                    Text(trailStyleHint(draft.style), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text(stringResource(R.string.trail_warp_title), style = MaterialTheme.typography.titleMedium)
-                    Text(stringResource(R.string.trail_warp_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.trail_resolution_title), style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                        val presets = listOf<Int?>(null, 2048, 1536, 1024)
+                        for (preset in presets) {
+                            val label = preset?.let { "$it " + stringResource(R.string.px_suffix) } ?: stringResource(R.string.trail_resolution_original)
+                            ChoiceChip(label, draft.maxOutputSide == preset) { draft = draft.copy(maxOutputSide = preset) }
+                        }
+                    }
                 }
-                Switch(checked = draft.warpZoom, onCheckedChange = { draft = draft.copy(warpZoom = it) })
+            }
+
+            GlassCard {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.trail_warp_title), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.trail_warp_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = draft.warpZoom, onCheckedChange = { draft = draft.copy(warpZoom = it) })
+                }
             }
         }
         Row(
@@ -390,7 +406,7 @@ private fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
  */
 @Composable
 private fun TrailStyleCard(style: TrailStyle, selected: Boolean, onClick: () -> Unit) {
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = MaterialTheme.colorScheme.tertiary
     val background = if (selected) accent.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     val border = if (selected) accent else MaterialTheme.colorScheme.outlineVariant
     Column(
@@ -468,7 +484,7 @@ private fun TrailInfoScreen(state: TrailScreen.Result, onClose: () -> Unit) {
             modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(stringResource(R.string.trail_info_title), style = MaterialTheme.typography.headlineSmall)
+            GradientTopBar(stringResource(R.string.trail_info_title))
             InfoRow(stringResource(R.string.trail_info_frames, state.framesUsed))
             val camera = listOfNotNull(exif.cameraMake, exif.cameraModel).joinToString(" ").ifBlank { "—" }
             InfoRow(stringResource(R.string.trail_info_camera, camera))
