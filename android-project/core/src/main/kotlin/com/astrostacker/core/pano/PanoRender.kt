@@ -66,6 +66,21 @@ object PanoRender {
         else -> PanoProjection.SPHERICAL
     }
 
+    /**
+     * Пользователь мог выбрать проекцию ДО склейки, когда реальный охват ещё
+     * не известен (см. экран выбора фото). Плоская/цилиндр математически
+     * ломаются за пределами своего охвата (тангенс уходит в бесконечность у
+     * края для плоской, аналогично у полюсов для цилиндра) - если выбор
+     * оказался слабее того, что реально нужно, подстраховываемся минимально
+     * необходимой проекцией вместо размазанного результата. `PanoProjection`
+     * объявлена в порядке возрастания "силы" (PLANAR < CYLINDRICAL <
+     * SPHERICAL), поэтому сравнение по ordinal и есть сравнение возможностей.
+     */
+    fun clampProjection(preferred: PanoProjection, hDeg: Double, vDeg: Double): PanoProjection {
+        val minimum = autoProjection(hDeg, vDeg)
+        return if (preferred.ordinal >= minimum.ordinal) preferred else minimum
+    }
+
     /** Границы каждого кадра в координатах проекции: [uMin, vMin, uMax, vMax] для всей панорамы. */
     private fun imageBounds(img: PanoImage, r: Mat3, f: Double, p: PanoProjection): DoubleArray? {
         val w = img.width; val h = img.height

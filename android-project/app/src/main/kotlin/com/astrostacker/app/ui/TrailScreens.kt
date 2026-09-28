@@ -302,6 +302,17 @@ private fun TrailResultScreen(
                     else OutlinedButton(onClick = { onFormat(format) }) { Text(label) }
                 }
             }
+            Text(
+                stringResource(
+                    when (state.exportFormat) {
+                        ExportFormat.TIFF16 -> R.string.result_format_tiff_hint
+                        ExportFormat.PNG -> R.string.result_format_png_hint
+                        ExportFormat.JPEG -> R.string.result_format_jpeg_hint
+                    }
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             when (state.saveState) {
                 SaveState.Success -> Text(stringResource(R.string.result_save_success), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodyMedium)
                 SaveState.Failed -> Text(stringResource(R.string.result_save_error), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)

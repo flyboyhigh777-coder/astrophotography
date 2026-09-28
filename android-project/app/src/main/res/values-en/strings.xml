@@ -94,6 +94,9 @@
     <string name="pano_projection_cylindrical">Cylinder</string>
     <string name="pano_projection_spherical">Sphere</string>
     <string name="pano_projection_hint">Flat keeps straight lines straight (up to ~90°). Cylinder suits wide horizontal panoramas up to 360°. Sphere suits several rows and large vertical coverage.</string>
+    <string name="pano_projection_limited">At this field of view, flat and/or cylindrical projections come out smeared (the math can\'t handle that angle) — only spherical is available.</string>
+    <string name="pano_projection_auto">Auto</string>
+    <string name="pano_projection_picker_hint">You can pick one now — if the actual field of view turns out too wide for it, the app will fall back to a wider one automatically (only visible after stitching).</string>
     <string name="pano_rendering">Rebuilding panorama…</string>
     <string name="pano_autocrop">Crop empty edges</string>
     <string name="pano_autocrop_hint">Removes the uneven black border — keeps the largest rectangle without gaps.</string>
