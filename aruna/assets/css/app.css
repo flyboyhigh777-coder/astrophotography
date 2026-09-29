@@ -570,3 +570,12 @@ h3.sub {
   font-size: 1.3rem; line-height: 1; padding: 0.2em 0.4em; color: var(--ink-4);
 }
 .event-row [data-role='del']:hover { color: var(--ember); }
+
+.auth-code { text-align: center; margin: 10px 0; }
+.auth-code code {
+  display: inline-block; font-family: var(--mono); font-size: 1.15rem;
+  letter-spacing: 0.06em; color: var(--gold-soft);
+  padding: 0.5em 0.9em; border-radius: 10px;
+  background: rgba(224, 180, 101, 0.10); border: 1px solid var(--line-gold);
+  user-select: all;
+}

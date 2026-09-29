@@ -1,0 +1,12 @@
+# Токен бота и прочие секреты — сюда попадать не должны
+server/config.json
+
+# Данные пользователей: карты, кошельки, дневники
+server/data/*
+!server/data/.gitkeep
+*.json.tmp
+*.json.broken.*
+
+# Мусор
+node_modules/
+.DS_Store

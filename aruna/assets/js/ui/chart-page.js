@@ -323,6 +323,7 @@
     var st = S.Reports.strength(ch);
     var fc = S.Reports.forecast(ch, jdNow);
     var vg2 = S.Reports.varga(ch);
+    var sv2 = S.Reports.sav(ch);
 
     out.innerHTML =
       '<div class="print-head">' +
@@ -348,6 +349,7 @@
       S.Paywall.section('chart.yogas', yg.full, yg.preview) +
       S.Paywall.section('chart.strength', st.full, st.preview) +
       S.Paywall.section('chart.varga', vg2.full, vg2.preview) +
+      S.Paywall.section('chart.sav', sv2.full, sv2.preview) +
       S.Paywall.section('chart.forecast', fc.full, fc.preview);
 
     drawChart(ch);

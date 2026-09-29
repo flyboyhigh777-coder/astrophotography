@@ -46,7 +46,9 @@
   /** Строка кошелька для боковой колонки. */
   function wallet() {
     var demo = Acc.isDemo();
+    var server = Acc.isServerMode && Acc.isServerMode();
     return '<div class="wallet">' +
+      (server ? '<span class="chip chip--teal" title="Баланс и покупки проверяет сервер">на сервере</span>' : '') +
       '<span class="wallet__balance seed">' + Acc.balance() + '</span>' +
       '<span class="muted small">' + S.esc(Acc.plural(Acc.balance())) +
         (demo ? ' · демо' : '') + '</span>' +
@@ -140,8 +142,11 @@
       var act = b.dataset.act;
       if (act === 'close') { close(); return; }
       if (act === 'buy') {
-        Acc.buy(+b.dataset.seeds);
-        openModal(id, onDone);            // перерисовываем с новым балансом
+        b.disabled = true;
+        // на сервере покупка асинхронная, локально — мгновенная; один код на оба
+        Promise.resolve(Acc.buy(+b.dataset.seeds)).then(function () {
+          openModal(id, onDone);          // перерисовываем с новым балансом
+        });
         return;
       }
       if (act === 'plan') {
@@ -151,9 +156,11 @@
         return;
       }
       if (act === 'unlock') {
-        var r = Acc.unlock(id);
-        if (r.ok) { close(); if (onDone) onDone(); }
-        else openModal(id, onDone);
+        b.disabled = true;
+        Promise.resolve(Acc.unlock(id)).then(function (r) {
+          if (r && r.ok) { close(); if (onDone) onDone(); }
+          else openModal(id, onDone);
+        });
       }
     };
   }
@@ -170,9 +177,12 @@
         var b = e.target.closest('[data-act]');
         if (!b) return;
         if (b.dataset.act === 'unlock') {
-          var r = Acc.unlock(id);
-          if (r.ok) { if (rerender) rerender(); return; }
-          openModal(id, rerender);
+          b.disabled = true;
+          Promise.resolve(Acc.unlock(id)).then(function (r) {
+            b.disabled = false;
+            if (r && r.ok) { if (rerender) rerender(); return; }
+            openModal(id, rerender);
+          });
         } else {
           openModal(id, rerender);
         }

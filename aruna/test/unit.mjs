@@ -39,7 +39,8 @@ for (const f of [
   '../assets/js/jyotish/forecast.js',
   '../assets/js/jyotish/muhurta.js',
   '../assets/js/jyotish/varga.js',
-  '../assets/js/jyotish/rectify.js'
+  '../assets/js/jyotish/rectify.js',
+  '../assets/js/jyotish/sarvashtaka.js'
 ]) {
   vm.runInThisContext(fs.readFileSync(path.join(dir, f), 'utf8'));
 }
@@ -50,7 +51,8 @@ const A = globalThis.ArunaAstro, C = globalThis.ArunaChart, Tz = globalThis.Arun
       Verses = globalThis.ArunaVerses, Acc = globalThis.ArunaAccess,
       Y = globalThis.ArunaYogas, St = globalThis.ArunaStrength,
       Fc = globalThis.ArunaForecast, Mu = globalThis.ArunaMuhurta,
-      Vg = globalThis.ArunaVarga, Rt = globalThis.ArunaRectify;
+      Vg = globalThis.ArunaVarga, Rt = globalThis.ArunaRectify,
+      Sv = globalThis.ArunaSarvashtaka;
 
 let passed = 0, failed = 0;
 const group = name => console.log('\n— ' + name);
@@ -530,6 +532,56 @@ group('Варга-карты');
      Vg.vimshopaka(vc, 'rahu') === null && Vg.vimshopaka(vc, 'ketu') === null);
   ok('варготтама определяется по совпадению раши в D1 и D9',
      Vg.vargottama(vc).every(k => Vg.vargaRashi('D9', vc.grahas[k].lon) === vc.grahas[k].rashi));
+}
+
+/* ------------------------------------------------------- аштака-варга */
+group('Аштака-варга');
+{
+  // Контрольные суммы — главное доказательство, что таблицы набраны верно.
+  // Сумма бинду каждой грахи по всем восьми опорам фиксирована классикой.
+  let tablesOk = true;
+  for (const g of Sv.PLANETS) {
+    const sum = Sv.FROM.reduce((a, f) => a + (Sv.BINDU[g][f] || []).length, 0);
+    if (sum !== Sv.TOTALS[g]) {
+      tablesOk = false;
+      ok(`сумма бинду ${D.GRAHAS[g].sa}`, false, `${sum} вместо ${Sv.TOTALS[g]}`);
+    }
+  }
+  ok('суммы бинду всех семи грах совпадают с классикой ' +
+     '(48/49/39/54/56/52/39)', tablesOk);
+  ok('общая сумма таблиц равна 337',
+     Sv.PLANETS.reduce((a, g) => a + Sv.TOTALS[g], 0) === Sv.GRAND_TOTAL);
+  ok('в таблицах только бхавы 1-12',
+     Sv.PLANETS.every(g => Sv.FROM.every(f =>
+       (Sv.BINDU[g][f] || []).every(h => h >= 1 && h <= 12))));
+  ok('внутри набора нет повторов',
+     Sv.PLANETS.every(g => Sv.FROM.every(f => {
+       const a = Sv.BINDU[g][f] || [];
+       return a.length === new Set(a).size;
+     })));
+
+  const c = chartAt(1975, 6, 15, 6, 0, 55.7558, 37.6176, 'Europe/Moscow');
+  const sv = Sv.sarva(c);
+  ok('сарвашта-кавварга даёт 12 строк', sv.rows.length === 12);
+  ok('сумма по кругу равна 337', sv.total === 337);
+  ok('у каждой строки есть бхава и оценка',
+     sv.rows.every(r => r.bhava >= 1 && r.bhava <= 12 && r.band && r.bindu >= 0));
+
+  // инвариант держится на любой карте — проверяем на выборке
+  let broken = 0;
+  for (let i = 0; i < 150; i++) {
+    const cc = chartAt(1950 + (i % 70), 1 + (i % 12), 1 + ((i * 7) % 28),
+                       (i * 5) % 24, 0, 55 - (i % 60), 30 + (i % 90), 'UTC');
+    if (Sv.sarva(cc).total !== 337) broken++;
+    for (const g of Sv.PLANETS) {
+      if (Sv.bhinna(cc, g).total !== Sv.TOTALS[g]) broken++;
+    }
+  }
+  ok('на 150 случайных картах инварианты не нарушаются', broken === 0, `нарушений ${broken}`);
+
+  const t = Sv.transitScore(c, 'saturn', 9);
+  ok('оценка транзита в диапазоне 0-8 и с пояснением',
+     t.bindu >= 0 && t.bindu <= 8 && t.band && t.note);
 }
 
 /* ---------------------------------------------------------- ректификация */

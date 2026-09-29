@@ -253,6 +253,58 @@
     return { full: full, preview: preview };
   }
 
+  /* ------------------------------------------------- сарвашта-кавварга */
+  function sav(chart) {
+    var Sv = root.ArunaSarvashtaka;
+    var r = Sv.sarva(chart);
+    var head = '<div class="panel__head"><h2>Сарвашта-кавварга</h2>' +
+      '<p class="tiny muted">очки бинду · среднее ' + r.average + ' · всего всегда 337</p></div>';
+
+    var byBhava = r.rows.slice().sort(function (a, b) { return a.bhava - b.bhava; });
+    function row(x) {
+      var pct = Math.round(x.bindu / 40 * 100);
+      var tone = x.bindu >= 33 ? '#74c7b8' : x.bindu >= 29 ? 'var(--gold)'
+               : x.bindu >= 25 ? 'var(--ink-3)' : '#e0704f';
+      return '<div class="str">' +
+        '<div class="str__name">' + x.bhava + '-я · ' + S.esc(x.rashiName) + '</div>' +
+        '<div class="str__track"><span class="str__fill" style="width:' + pct +
+          '%;background:' + tone + '"></span></div>' +
+        '<div class="str__score">' + x.bindu + '</div>' +
+        '<div class="str__band muted small">' + S.esc(x.band) + '</div>' +
+      '</div>';
+    }
+
+    // где сейчас медленные грахи и сколько там бинду — главное применение системы
+    var jd = Tz.msToJd(Date.now());
+    var ayan = root.ArunaChart.ayanamsa(jd);
+    var transits = ['saturn', 'jupiter'].map(function (k) {
+      var lon = root.ArunaChart.toSidereal(A.planet(k, A.jdToJde(jd)).lon, ayan);
+      var t = Sv.transitScore(chart, k, Math.floor(lon / 30));
+      return '<div class="note-box"><h4>' + S.esc(D.GRAHAS[k].sa) + ' сейчас в ' +
+        S.esc(t.rashiName) + '</h4>' +
+        '<p><b>' + t.bindu + ' из 8</b> бинду — ' + S.esc(t.band) + '.</p>' +
+        '<p class="tiny muted">' + S.esc(t.note) + '</p></div>';
+    }).join('');
+
+    var full = '<div class="panel">' + head +
+      '<p class="muted">Каждая граха раздаёт бинду по раши, считая от семи грах и от ' +
+      'лагны. Сумма по кругу всегда равна 337 — это свойство самих таблиц, поэтому ' +
+      'смотреть надо не на абсолютные числа, а на то, где их больше и меньше среднего.</p>' +
+      '<div class="str-list">' + byBhava.map(row).join('') + '</div>' +
+      '<h3 class="sub">Медленные грахи по вашим бинду</h3>' + transits +
+      '<p class="tiny muted" style="margin-top:12px">' +
+      'Больше всего очков: ' + r.strongest.map(function (x) {
+        return S.esc(x.rashiName) + ' (' + x.bindu + ')'; }).join(', ') +
+      '. Меньше всего: ' + r.weakest.map(function (x) {
+        return S.esc(x.rashiName) + ' (' + x.bindu + ')'; }).join(', ') + '.</p>' +
+      '</div>';
+
+    var preview = '<div class="panel">' + head +
+      '<div class="str-list">' + byBhava.slice(0, 3).map(row).join('') + '</div></div>';
+
+    return { full: full, preview: preview };
+  }
+
   S.Reports = { yogas: yogas, strength: strength, forecast: forecast,
-                varga: varga, dateShort: dateShort };
+                varga: varga, sav: sav, dateShort: dateShort };
 })(typeof globalThis !== 'undefined' ? globalThis : this, document);

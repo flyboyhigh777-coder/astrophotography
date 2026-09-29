@@ -80,6 +80,13 @@
              'держится не только в раши, но и в глубине.',
       free: 'Навамша (D9) — вторая по важности карта — открыта бесплатно.'
     },
+    'chart.sav': {
+      title: 'Сарвашта-кавварга',
+      price: 2,
+      about: 'Очки бинду по каждому раши: где у вашей карты запас прочности, а где ' +
+             'тонко — и сколько бинду в тех раши, куда сейчас пришли Шани и Гуру.',
+      free: 'Сумма всегда 337 — это свойство самих таблиц; первые строки видны и так.'
+    },
     'chart.forecast': {
       title: 'Год вперёд',
       price: 3,
@@ -118,6 +125,61 @@
     }
   };
 
+  /* -------------------------------------------------- серверный режим */
+  /*
+   * Пока сайт живёт один, кошелёк лежит в браузере и его можно подделать —
+   * для витрины это честно и написано на страницах. Как только рядом
+   * поднят server/api.js, источником правды становится он: баланс,
+   * списания и право на разбор проверяются там.
+   */
+  var TOKEN_KEY = 'aruna.token.v1';
+  var remote = { token: null, ready: false };
+
+  function token() {
+    if (remote.token) return remote.token;
+    try { remote.token = root.localStorage.getItem(TOKEN_KEY); } catch (e) { remote.token = null; }
+    return remote.token;
+  }
+
+  function setToken(t) {
+    remote.token = t;
+    try {
+      if (t) root.localStorage.setItem(TOKEN_KEY, t);
+      else root.localStorage.removeItem(TOKEN_KEY);
+    } catch (e) { /* инкогнито */ }
+  }
+
+  function isServerMode() { return !!token(); }
+
+  function apiFetch(path, opts) {
+    opts = opts || {};
+    var headers = Object.assign({ 'content-type': 'application/json' }, opts.headers || {});
+    var t = token();
+    if (t) headers.authorization = 'Bearer ' + t;
+    return root.fetch(path, Object.assign({}, opts, { headers: headers }));
+  }
+
+  /** Подтянуть кошелёк с сервера в локальный кэш. */
+  function syncFromServer() {
+    if (!isServerMode() || !root.fetch) return Promise.resolve(null);
+    return apiFetch('/api/wallet').then(function (r) {
+      if (r.status === 401) { setToken(null); return null; }
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function (w) {
+      if (!w) return null;
+      var s = get();
+      s.balance = w.balance;
+      s.plan = w.plan;
+      s.unlocked = w.unlocked || {};
+      s.demo = w.demo;
+      s.server = true;
+      set(s);
+      remote.ready = true;
+      return w;
+    }).catch(function () { return null; });
+  }
+
   /* ------------------------------------------------------- адаптер */
   /**
    * Единственное место, которое поменяется при подключении оплаты.
@@ -136,28 +198,64 @@
     save: function (state) {
       try { root.localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* пусто */ }
     },
-    /** Здесь будет обращение к платёжному провайдеру. */
+    /** Пополнение: на сервере — через API, без сервера — локальная демонстрация. */
     buy: function (pack) {
+      if (isServerMode()) {
+        return apiFetch('/api/purchase', {
+          method: 'POST', body: JSON.stringify({ pack: pack.seeds })
+        }).then(function (r) { return r.json(); })
+          .then(function (b) {
+            if (b && typeof b.balance === 'number') {
+              var s = get(); s.balance = b.balance; set(s);
+              return { ok: true, demo: !!b.demo };
+            }
+            return { ok: false, reason: b && b.error ? b.error : 'не удалось' };
+          })
+          .catch(function () { return { ok: false, reason: 'сервер недоступен' }; });
+      }
       if (!DEMO) return { ok: false, reason: 'payment-not-connected' };
       var s = get();
       s.balance += pack.seeds;
       set(s);
       return { ok: true, demo: true };
     },
-    /** Здесь будет проверка покупки на сервере. */
+    /** Покупка разбора: на сервере списывает он, локально — мы сами. */
     unlock: function (id) {
-      var f = FEATURES[id];
-      if (!f) return { ok: false, reason: 'unknown-feature' };
-      var s = get();
-      if (s.plan === PLAN.id) return { ok: true, by: 'plan' };
-      if (s.unlocked[id]) return { ok: true, by: 'already' };
-      if (s.balance < f.price) return { ok: false, reason: 'not-enough', need: f.price - s.balance };
-      s.balance -= f.price;
-      s.unlocked[id] = Date.now();
-      set(s);
-      return { ok: true, by: 'seeds', spent: f.price };
-    }
+      if (isServerMode()) {
+        return apiFetch('/api/unlock', {
+          method: 'POST', body: JSON.stringify({ feature: id })
+        }).then(function (r) { return r.json().then(function (b) { return { r: r, b: b }; }); })
+          .then(function (x) {
+            if (x.r.ok && x.b.ok) {
+              var s = get();
+              s.balance = x.b.balance;
+              s.unlocked[id] = Date.now();
+              set(s);
+              return { ok: true, by: x.b.already ? 'already' : 'seeds' };
+            }
+            return { ok: false, reason: x.r.status === 402 ? 'not-enough' : (x.b.error || 'ошибка'),
+                     need: x.b.need };
+          })
+          .catch(function () { return { ok: false, reason: 'сервер недоступен' }; });
+      }
+      return localUnlock(id);
+    },
+    /** Локальное списание — витринный режим. */
+    localUnlock: function (id) { return localUnlock(id); }
   };
+
+  function localUnlock(id) {
+    var f = FEATURES[id];
+    if (!f) return { ok: false, reason: 'unknown-feature' };
+    var s = get();
+    if (s.plan === PLAN.id) return { ok: true, by: 'plan' };
+    if (s.unlocked[id]) return { ok: true, by: 'already' };
+    if (s.balance < f.price) return { ok: false, reason: 'not-enough', need: f.price - s.balance };
+    s.balance -= f.price;
+    s.unlocked[id] = Date.now();
+    set(s);
+    return { ok: true, by: 'seeds', spent: f.price };
+  }
 
   /* --------------------------------------------------------- модель */
   var cache = null;
@@ -217,6 +315,8 @@
   root.ArunaAccess = {
     DEMO: DEMO, CURRENCY: CURRENCY, PACKS: PACKS, PLAN: PLAN, FEATURES: FEATURES,
     ADAPTER: ADAPTER,
+    isServerMode: isServerMode, setToken: setToken, token: token,
+    syncFromServer: syncFromServer, apiFetch: apiFetch,
     plural: plural, seeds: seeds,
     has: has, feature: feature, unlock: unlock, buy: buy,
     balance: balance, plan: plan, setPlan: setPlan, isDemo: isDemo,
