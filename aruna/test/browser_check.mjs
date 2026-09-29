@@ -58,10 +58,26 @@ const PAGES = [
     act: async page => {
       await page.click('#exampleBtn').catch(() => {});
       await page.waitForTimeout(300);
-      const b = await page.$('.prompt-btn');
-      if (b) { await b.click(); await page.waitForTimeout(500); }
+      // вопрос своими словами через поле, а не кнопкой: это основной путь
+      await page.fill('#askField', 'Никак не решусь на переезд, всё откладываю');
+      await page.click('#askBtn');
+      await page.waitForTimeout(900);
     },
-    filled: ['.talk__msg--sa']
+    filled: ['.talk__msg--me', '.talk__msg--sa .talk__body p', '.talk__more button', '#quotaLine']
+  },
+  {
+    url: '/dialog.html', name: 'dialog-deep',
+    act: async page => {
+      await page.click('#exampleBtn').catch(() => {});
+      await page.waitForTimeout(300);
+      await page.fill('#askField', 'Что мне пора отпустить?');
+      await page.click('#askBtn');
+      await page.waitForTimeout(900);
+      // «развернуть» списывает биджу и должно дать стих и след расчёта
+      await page.click('.talk__more button');
+      await page.waitForTimeout(900);
+    },
+    filled: ['.talk__verse', '.talk__trail .trail summary']
   },
   {
     url: '/chart.html', name: 'chart-unlocked',

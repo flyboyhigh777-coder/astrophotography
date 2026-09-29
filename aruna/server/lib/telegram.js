@@ -72,6 +72,15 @@ class Telegram {
     }, extra));
   }
 
+  /**
+   * «печатает…» в чате. Живёт около пяти секунд, поэтому на долгом
+   * ответе её повторяют. Нужна ровно там, где ответ не мгновенный.
+   */
+  chatAction(chatId, action = 'typing') {
+    return this.call('sendChatAction', { chat_id: chatId, action }, 1)
+      .catch(() => null);            // индикатор не стоит того, чтобы ронять ответ
+  }
+
   answerCallback(id, text) {
     return this.call('answerCallbackQuery', { callback_query_id: id, text: text || '' });
   }

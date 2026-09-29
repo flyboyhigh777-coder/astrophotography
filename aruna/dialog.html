@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Диалог с Дипой — наставник, который видит вашу карту — Аруна</title>
-<meta name="description" content="Разговор с опорой на писания: Дипа смотрит на вашу карту и небо дня, помнит прошлые беседы и отвечает по существу.">
+<meta name="description" content="Разговор с опорой на писания: Дипа смотрит на вашу карту и небо дня, обращается к расчёту за подробностями и отвечает по существу — своими словами, на ваши.">
 <meta name="theme-color" content="#080b16">
 <script>document.documentElement.classList.add('js');</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
@@ -49,7 +49,7 @@
       <h1>Разговор, в котором вас уже знают</h1>
       <p class="lede">
         Дипа смотрит на вашу карту и на небо сегодняшнего дня. Не нужно объяснять,
-        кто вы, — можно сразу говорить о главном.
+        кто вы, — спрашивайте своими словами и сразу о главном.
       </p>
     </div>
   </section>
@@ -66,16 +66,17 @@
           </div>
         </div>
         <div class="panel">
-          <h3 style="font-size:0.98rem;margin-bottom:0.5em">Честно о демонстрации</h3>
-          <p class="tiny muted">
-            Здесь языковая модель не подключена: ответы собираются из вашей карты, текущей
-            даши и неба дня по правилам — поэтому они действительно разные у разных людей,
-            но их набор конечен. В полной версии на этом месте наставник с языковой моделью
-            и памятью бесед.
+          <h3 style="font-size:0.98rem;margin-bottom:0.5em">Что здесь считается, а что пишется</h3>
+          <p class="tiny muted" id="modeNote">—</p>
+          <p class="tiny muted" style="margin-top:0.7em">
+            Дипа не называет дат событий и не обещает исходов: карта показывает обстановку.
+            За решением о здоровье, суде или деньгах идут к живому специалисту —
+            <a href="legal.html">об этом подробнее</a>.
           </p>
           <p class="tiny muted" style="margin-top:0.7em">
-            История разговора хранится только у вас в браузере.
-            <button class="btn btn--quiet btn--sm" type="button" id="clearBtn" style="padding:0">Очистить</button>
+            Беседа хранится, чтобы Дипа помнила разговор: без входа — только у вас в браузере,
+            со входом — ещё и на сервере рядом с кошельком.
+            <button class="btn btn--quiet btn--sm" type="button" id="clearBtn" style="padding:0">Забыть разговор</button>
           </p>
         </div>
       </aside>
@@ -87,6 +88,16 @@
             <p class="tiny muted" id="skyLine">—</p>
           </div>
           <div class="talk" id="talk" aria-live="polite"></div>
+
+          <form class="composer" id="askForm" autocomplete="off">
+            <label class="sr-only" for="askField">Ваш вопрос Дипе</label>
+            <textarea class="composer__field" id="askField" rows="1" maxlength="700"
+              placeholder="Спросите своими словами…"
+              disabled></textarea>
+            <button class="btn btn--gold btn--sm composer__send" id="askBtn" type="submit" disabled>Спросить</button>
+          </form>
+          <p class="tiny muted composer__note" id="quotaLine"></p>
+
           <div class="prompts" id="prompts"></div>
         </div>
       </div>
@@ -113,6 +124,7 @@
 <script src="assets/js/jyotish/chart.js"></script>
 <script src="assets/js/jyotish/panchanga.js"></script>
 <script src="assets/js/jyotish/dasha.js"></script>
+<script src="assets/js/jyotish/talk.js"></script>
 <script src="assets/js/ui/chartview.js"></script>
 <script src="assets/js/ui/common.js"></script>
 <script src="assets/js/ui/birthform.js"></script>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Сарати · все проверки разом.
+# Аруна · все проверки разом.
 #
 #   ./test/run_all.sh
 #
@@ -7,8 +7,9 @@
 # 2. check_ascendant.mjs  — формула лагны против перебора по горизонту (только node)
 # 3. bot.test.js          — весь диалог телеграм-бота без настоящего телеграма
 # 4. api.test.js          — сервер, вход через бота, оплата и выдача разборов
-# 5. validate_ephemeris   — сверка эфемериды с pyephem      (нужен: pip install ephem)
-# 6. browser_check.mjs    — страницы в настоящем Chromium    (нужен: playwright + порт 8099)
+# 5. dipa.test.js         — разговор: правила, блок фактов, инструменты, /api/talk
+# 6. validate_ephemeris   — сверка эфемериды с pyephem      (нужен: pip install ephem)
+# 7. browser_check.mjs    — страницы в настоящем Chromium    (нужен: playwright + порт 8099)
 #
 # Пункты 3 и 4 пропускаются, если их зависимостей нет: базовые проверки
 # должны проходить на голом node.
@@ -29,6 +30,7 @@ run "Модульные тесты расчётного слоя" node test/unit
 run "Лагна: формула против перебора"  node test/check_ascendant.mjs
 run "Телеграм-бот: весь диалог"       node test/bot.test.js
 run "Сервер: вход, оплата, разборы"   node test/api.test.js
+run "Дипа: разговор и оплата за раз"  node test/dipa.test.js
 
 if python3 -c "import ephem" 2>/dev/null; then
   echo

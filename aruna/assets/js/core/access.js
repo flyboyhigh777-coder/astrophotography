@@ -119,9 +119,20 @@
     'dialog.deep': {
       title: 'Развёрнутый ответ',
       price: 1,
-      about: 'Длинный ответ наставника: разбор по нескольким бхавам, связь с дашей ' +
-             'и подобранный стих с пояснением.',
-      free: 'Короткие ответы по вашей карте — без ограничений.'
+      /*
+       * Единственный разбор с оплатой за каждый раз, а не навсегда. Причина
+       * прямая: остальные разборы — это расчёт, он одинаков и его честно
+       * открыть однажды. Развёрнутый ответ Дипы каждый раз пишется заново,
+       * с обращением к расчёту, и каждый раз стоит нам денег. Так что
+       * «купил один раз и говори без конца» тут было бы нечестным
+       * обещанием, которое рано или поздно пришлось бы отобрать.
+       *
+       * По подписке — без счёта (с суточным пределом, он указан в тарифах).
+       */
+      perUse: true,
+      about: 'Длинный ответ наставника: разбор по нескольким бхавам, связь с идущей ' +
+             'дашей и небом дня, обращение к расчёту за подробностями и стих с пояснением.',
+      free: 'Короткие ответы по вашей карте — без ограничений и бесплатно.'
     }
   };
 
@@ -249,10 +260,12 @@
     if (!f) return { ok: false, reason: 'unknown-feature' };
     var s = get();
     if (s.plan === PLAN.id) return { ok: true, by: 'plan' };
-    if (s.unlocked[id]) return { ok: true, by: 'already' };
+    if (!f.perUse && s.unlocked[id]) return { ok: true, by: 'already' };
     if (s.balance < f.price) return { ok: false, reason: 'not-enough', need: f.price - s.balance };
     s.balance -= f.price;
-    s.unlocked[id] = Date.now();
+    // разовый разбор не запоминается: он оплачен за этот раз и только
+    if (!f.perUse) s.unlocked[id] = Date.now();
+    s.spent = (s.spent || 0) + f.price;
     set(s);
     return { ok: true, by: 'seeds', spent: f.price };
   }
@@ -274,11 +287,29 @@
 
   function onChange(fn) { listeners.push(fn); }
 
-  /** Открыт ли разбор: по подписке, по прошлой покупке или нет. */
+  /**
+   * Открыт ли разбор: по подписке, по прошлой покупке или нет.
+   * У разборов с оплатой за раз (perUse) «навсегда» не бывает —
+   * им отвечает только подписка.
+   */
   function has(id) {
     var s = get();
     if (s.plan === PLAN.id) return true;
+    var f = FEATURES[id];
+    if (f && f.perUse) return false;
     return !!s.unlocked[id];
+  }
+
+  /** Платится за каждый раз, а не однажды. */
+  function perUse(id) { return !!(FEATURES[id] && FEATURES[id].perUse); }
+
+  /** Баланс пришёл с сервера (например, списан при ответе Дипы). */
+  function setBalance(n) {
+    if (typeof n !== 'number') return balance();
+    var s = get();
+    s.balance = n;
+    set(s);
+    return n;
   }
 
   function balance() { return get().balance; }
@@ -318,7 +349,8 @@
     isServerMode: isServerMode, setToken: setToken, token: token,
     syncFromServer: syncFromServer, apiFetch: apiFetch,
     plural: plural, seeds: seeds,
-    has: has, feature: feature, unlock: unlock, buy: buy,
+    has: has, perUse: perUse, feature: feature, unlock: unlock, buy: buy,
+    setBalance: setBalance,
     balance: balance, plan: plan, setPlan: setPlan, isDemo: isDemo,
     reset: reset, onChange: onChange, state: get
   };

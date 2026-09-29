@@ -26,6 +26,7 @@ const crypto = require('node:crypto');
 
 const { Store } = require('./lib/store.js');
 const J = require('./lib/jyotish.js');
+const Dipa = require('./lib/dipa.js');
 
 const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.PORT || 8080);
@@ -35,6 +36,7 @@ const store = new Store(DATA);
 if (!store.data.sessions) store.data.sessions = {};
 if (!store.data.codes) store.data.codes = {};
 if (!store.data.wallets) store.data.wallets = {};
+if (!store.data.talks) store.data.talks = {};
 
 /* --------------------------------------------------------------- деньги */
 
@@ -56,6 +58,34 @@ function wallet(userId) {
     store.dirty = true;
   }
   return store.data.wallets[userId];
+}
+
+/* --------------------------------------------------------- разговоры */
+
+/**
+ * Беседа с Дипой. Хранится только сама переписка и заметка наставника —
+ * данные рождения на сервер не переезжают: их присылает страница на каждый
+ * запрос и мы их не записываем. Это то же обещание, что на страницах.
+ */
+function talkOf(userId) {
+  if (!store.data.talks[userId]) {
+    store.data.talks[userId] = { turns: [], note: null, updatedAt: Date.now() };
+    store.dirty = true;
+  }
+  const t = store.data.talks[userId];
+  if (!Array.isArray(t.turns)) t.turns = [];
+  return t;
+}
+
+/** Сколько ответов человек уже получил сегодня. Лимит — от перерасхода. */
+function talkQuota(w, kind) {
+  const day = new Date().toISOString().slice(0, 10);
+  if (!w.talk || w.talk.day !== day) w.talk = { day: day, free: 0, deep: 0 };
+  const cfg = Dipa.config();
+  const limit = kind === 'deep' ? cfg.deepPerDay : cfg.freePerDay;
+  // по подписке короткие ответы тоже не бесконечны, но предел заметно выше
+  const mine = w.plan === ACCESS.PLAN.id ? limit * 3 : limit;
+  return { used: w.talk[kind] || 0, limit: mine, left: Math.max(0, mine - (w.talk[kind] || 0)) };
 }
 
 /* --------------------------------------------------------------- сессии */
@@ -149,6 +179,32 @@ function json(res, code, body) {
   res.end(data);
 }
 
+/**
+ * Поток событий (SSE). Нужен ровно для одного: чтобы ответ Дипы появлялся
+ * по мере того, как пишется, а не падал готовым куском через полминуты.
+ * Ничего лишнего: три вида событий и закрытие.
+ */
+function sse(req, res) {
+  res.writeHead(200, {
+    'content-type': 'text/event-stream; charset=utf-8',
+    'cache-control': 'no-store',
+    connection: 'keep-alive',
+    // nginx иначе буферизует поток и весь смысл теряется
+    'x-accel-buffering': 'no'
+  });
+  let closed = false;
+  req.on('close', () => { closed = true; });
+  return {
+    send(event, data) {
+      if (closed || res.writableEnded) return false;
+      res.write('event: ' + event + '\ndata: ' + JSON.stringify(data) + '\n\n');
+      return true;
+    },
+    get closed() { return closed; },
+    end() { if (!res.writableEnded) res.end(); }
+  };
+}
+
 function readBody(req, limit = 64 * 1024) {
   return new Promise((resolve, reject) => {
     let size = 0;
@@ -216,6 +272,14 @@ async function api(req, res, url) {
     const body = await readBody(req);
     const f = ACCESS.FEATURES[body.feature];
     if (!f) return json(res, 400, { error: 'нет такого разбора' });
+    if (f.perUse) {
+      // Разовые разборы оплачиваются там, где делается работа (см. /api/talk):
+      // «открыть навсегда» их нельзя, и списывать заранее незачем.
+      return json(res, 400, {
+        error: 'этот разбор платится за каждый раз, отдельная покупка не нужна',
+        perUse: true, price: f.price
+      });
+    }
     if (w.plan === ACCESS.PLAN.id || w.unlocked[body.feature]) {
       return json(res, 200, { ok: true, already: true, balance: w.balance });
     }
@@ -227,6 +291,132 @@ async function api(req, res, url) {
     w.unlocked[body.feature] = Date.now();
     store.dirty = true;
     return json(res, 200, { ok: true, balance: w.balance });
+  }
+
+  /* ---- разговор с Дипой ---- */
+
+  if (route === 'talk/state' && req.method === 'GET') {
+    const t = talkOf(session.userId);
+    return json(res, 200, {
+      turns: t.turns.slice(-24).map((x) => ({ role: x.role, text: x.text, at: x.at })),
+      model: Dipa.available(),
+      why: Dipa.available() ? null : Dipa.whyUnavailable(),
+      free: talkQuota(w, 'free'),
+      deep: talkQuota(w, 'deep'),
+      price: ACCESS.FEATURES['dialog.deep'].price,
+      balance: w.balance,
+      plan: w.plan
+    });
+  }
+
+  if (route === 'talk/forget' && req.method === 'POST') {
+    // «Забудьте» должно забывать по-настоящему: и реплики, и заметку.
+    store.data.talks[session.userId] = { turns: [], note: null, updatedAt: Date.now() };
+    store.dirty = true;
+    return json(res, 200, { ok: true });
+  }
+
+  if (route === 'talk' && req.method === 'POST') {
+    const body = await readBody(req);
+    const question = String(body.question || '').trim();
+    const deep = !!body.deep;
+    if (!question) return json(res, 400, { error: 'вопрос пустой' });
+    if (question.length > Dipa.config().maxQuestion) {
+      return json(res, 400, { error: 'вопрос длиннее ' + Dipa.config().maxQuestion + ' символов' });
+    }
+    if (!body.birth || !body.birth.date || !body.birth.place) {
+      return json(res, 400, { error: 'нужны данные рождения' });
+    }
+
+    const quota = talkQuota(w, deep ? 'deep' : 'free');
+    if (quota.left <= 0) {
+      return json(res, 429, {
+        error: 'на сегодня предел: ' + quota.limit + ' ответов. Это защита от перерасхода, ' +
+               'а не наказание — вернитесь завтра.'
+      });
+    }
+
+    // Развёрнутый ответ платится за каждый раз. Списываем до ответа, чтобы
+    // нельзя было получить его и не заплатить; если ответа не вышло —
+    // возвращаем (см. refund ниже).
+    const price = ACCESS.FEATURES['dialog.deep'].price;
+    const bySub = w.plan === ACCESS.PLAN.id;
+    let charged = 0;
+    if (deep && !bySub) {
+      if (w.balance < price) {
+        return json(res, 402, { error: 'развёрнутый ответ стоит ' + price + ' биджу',
+                                need: price - w.balance, feature: 'dialog.deep' });
+      }
+      w.balance -= price;
+      w.spent = (w.spent || 0) + price;
+      charged = price;
+      store.dirty = true;
+    }
+
+    const talk = talkOf(session.userId);
+    const stream = sse(req, res);
+    let out = '';
+
+    stream.send('start', {
+      deep: deep, model: Dipa.available(), balance: w.balance,
+      left: quota.left - 1, charged: charged
+    });
+
+    try {
+      const r = await Dipa.answer({
+        birth: body.birth,
+        question: question,
+        deep: deep,
+        history: talk.turns.slice(-Dipa.config().historyTurns * 2),
+        note: talk.note,
+        onText: (chunk) => { out += chunk; stream.send('text', { t: chunk }); },
+        onTool: (t) => stream.send('tool', t)
+      });
+
+      // поток мог не открыться (модели нет) — тогда текст ушёл разом
+      if (!out && r.text) stream.send('text', { t: r.text });
+
+      // Заплатили за разбор наставника, а ответили правила — значит, человек
+      // получил то, что и так бесплатно. Возвращаем: списывать за подмену
+      // нельзя, даже если ответ сам по себе неплохой.
+      let refunded = 0;
+      if (charged && r.source !== 'model') {
+        w.balance += charged;
+        w.spent -= charged;
+        refunded = charged;
+        charged = 0;
+        store.dirty = true;
+      }
+
+      w.talk[deep ? 'deep' : 'free'] = (w.talk[deep ? 'deep' : 'free'] || 0) + 1;
+      talk.turns.push({ role: 'user', text: question, at: Date.now() });
+      talk.turns.push({ role: 'assistant', text: r.text, at: Date.now(), deep: deep });
+      if (talk.turns.length > 40) talk.turns = talk.turns.slice(-40);
+      talk.updatedAt = Date.now();
+      store.dirty = true;
+
+      stream.send('done', {
+        source: r.source, trail: r.trail || [], facts: r.facts || null,
+        balance: w.balance, error: r.error || null, partial: !!r.partial,
+        refunded: refunded, charged: charged,
+        left: talkQuota(w, deep ? 'deep' : 'free').left
+      });
+      stream.end();
+
+      // Заметку наставник переписывает после ответа, уже не задерживая человека.
+      if (Dipa.available() && talk.turns.length >= 4 && talk.turns.length % 6 === 0) {
+        Dipa.updateNote({ history: talk.turns, note: talk.note }).then((note) => {
+          if (note) { talk.note = note; talk.updatedAt = Date.now(); store.dirty = true; }
+        }).catch(() => {});
+      }
+      return;
+    } catch (e) {
+      // Ответа не вышло — деньги возвращаем. Иначе это просто обман.
+      if (charged) { w.balance += charged; w.spent -= charged; store.dirty = true; }
+      stream.send('error', { error: e.message, balance: w.balance });
+      stream.end();
+      return;
+    }
   }
 
   if (route === 'report' && req.method === 'POST') {

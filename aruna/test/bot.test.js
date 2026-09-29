@@ -165,6 +165,64 @@ const cb = (data, chatId = 555) =>
   await bot.tick();
   ok('второй раз за день сводка не дублируется', sent.length === before3);
 
+  group('Дипа: разговор своими словами');
+  // модель в тестах не спрашиваем — отвечают правила из talk.js
+  await msg('Никак не решусь на переезд, всё откладываю');
+  ok('обычный текст — это вопрос, а не «не понял команду»',
+     /4-я бхава/.test(lastText()) && !/понимаю команды/.test(lastText()));
+  ok('под ответом кнопка «развернуть» с ценой',
+     !!(last().payload.reply_markup &&
+        /Развернуть за \d+ биджу/.test(last().payload.reply_markup.inline_keyboard[0][0].text)));
+  ok('сказано, что собрано по правилам, а не моделью',
+     /по правилам/.test(lastText()));
+  ok('реплики легли в память бота',
+     bot.talkOf(bot.store.user(555)).turns.length === 2);
+
+  await msg('/ask почему всё время не хватает сил');
+  ok('/ask с вопросом отвечает про первую бхаву', /1-я бхава/.test(lastText()));
+  await msg('/ask');
+  ok('/ask без вопроса объясняет, как спрашивать', /Спрашивайте прямо в чат/.test(lastText()));
+
+  group('Дипа: развёрнутый разбор без кошелька рядом');
+  await cb('deep');
+  ok('честно сказано, что сайт не запущен рядом',
+     /не запущен рядом со мной/.test(lastText()));
+
+  group('Дипа: развёрнутый разбор с кошельком');
+  // подставляем кошелёк, как это делает server/index.js, когда сайт и бот
+  // поднимаются вместе
+  const fakeWallets = { 'tg:555': { balance: 2, plan: 'free', unlocked: {}, spent: 0 } };
+  bot.linkApi({
+    wallet: (id) => fakeWallets[id],
+    ACCESS: { PLAN: { id: 'sadhana' }, FEATURES: { 'dialog.deep': { price: 1 } } },
+    confirmCode: () => false
+  });
+  await msg('Что мне пора отпустить?');
+  await cb('deep');
+  ok('разбор пришёл', /12-я бхава/.test(lastText()));
+  ok('списана одна биджа', fakeWallets['tg:555'].balance === 1,
+     String(fakeWallets['tg:555'].balance));
+  ok('о списании сказано в ответе', /Списана 1 биджа/.test(lastText()));
+  await msg('А дальше что?');
+  await cb('deep');
+  ok('вторая биджа тоже списана', fakeWallets['tg:555'].balance === 0);
+  await msg('И ещё?');
+  await cb('deep');
+  ok('на нуле предлагают пополнить, а не молчат',
+     /в кошельке 0/.test(lastText()) && /Пополнить/.test(lastText()));
+  ok('баланс не ушёл в минус', fakeWallets['tg:555'].balance === 0);
+
+  fakeWallets['tg:555'].plan = 'sadhana';
+  await msg('А по подписке?');
+  await cb('deep');
+  ok('по подписке разбор без списания',
+     fakeWallets['tg:555'].balance === 0 && !/Списана/.test(lastText()));
+
+  group('Дипа: забыть разговор');
+  await msg('/forget');
+  ok('память очищена', bot.talkOf(bot.store.user(555)).turns.length === 0);
+  ok('и об этом сказано', /забыл/.test(lastText()));
+
   group('Сброс');
   await msg('/reset');
   ok('после сброса карты нет', bot.store.user(555).birth === null);

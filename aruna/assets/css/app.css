@@ -199,7 +199,7 @@ table.data td.num { font-family: var(--mono); font-size: 0.85rem; color: var(--i
 
 /* ------------------------------------------------------------- диалог */
 .talk {
-  display: grid; gap: 14px; max-height: min(62vh, 620px); overflow-y: auto;
+  display: grid; gap: 14px; max-height: min(70vh, 760px); overflow-y: auto;
   padding: 2px 6px 2px 2px; scroll-behavior: smooth;
   /* края растворяются, иначе обрезанная строка выглядит как поломка вёрстки */
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18px,
@@ -239,6 +239,73 @@ table.data td.num { font-family: var(--mono); font-size: 0.85rem; color: var(--i
   padding: 0.5em 1em; transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
 }
 .prompt-btn:hover { border-color: var(--line-gold); color: var(--gold-soft); background: rgba(224, 180, 101, 0.07); }
+
+/* только для читалок экрана: подпись у поля ввода нужна, а глазам мешает */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* --- поле вопроса --------------------------------------------------- */
+.composer {
+  display: flex; align-items: flex-end; gap: 10px; margin-top: 16px;
+  padding: 8px 8px 8px 14px; border: 1px solid var(--line); border-radius: 18px;
+  background: var(--surface-2); transition: border-color 0.2s ease;
+}
+.composer:focus-within { border-color: var(--line-gold); }
+.composer__field {
+  flex: 1; font: inherit; font-size: 0.95rem; line-height: 1.55; color: var(--ink-1);
+  background: none; border: 0; resize: none; padding: 7px 0; max-height: 160px;
+}
+.composer__field::placeholder { color: var(--ink-4); }
+.composer__field:focus { outline: none; }
+.composer__field:disabled { color: var(--ink-4); }
+.composer__send { flex: none; white-space: nowrap; }
+.composer__note { margin-top: 8px; }
+/* на узком экране кнопка уходит вниз во всю ширину: рядом с полем ей тесно */
+@media (max-width: 520px) {
+  .composer { flex-wrap: wrap; padding: 10px; }
+  .composer__field { flex: 1 0 100%; padding: 4px 4px 8px; }
+  .composer__send { width: 100%; }
+}
+
+/* --- Дипа обращается к расчёту -------------------------------------- */
+/* Не «печатает…», а что именно сейчас смотрится: это и ожидание
+   скрашивает, и показывает, что за ответом стоит расчёт. */
+.talk__work {
+  display: flex; align-items: center; gap: 0.6em;
+  font-size: 0.83rem; color: var(--gold); margin-bottom: 0.5em;
+}
+.talk__work[hidden] { display: none; }
+.talk__pulse {
+  flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--gold);
+  animation: dipaPulse 1.5s ease-in-out infinite;
+}
+@keyframes dipaPulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .talk__pulse { animation: none; opacity: 0.8; }
+}
+.talk__step { color: var(--ink-3); }
+
+/* --- след расчёта под ответом --------------------------------------- */
+.talk__trail { margin-top: 0.8em; }
+.trail > summary {
+  cursor: pointer; font-size: 0.8rem; color: var(--ink-3);
+  padding-top: 0.6em; border-top: 1px solid var(--line);
+  list-style: none;
+}
+.trail > summary::-webkit-details-marker { display: none; }
+.trail > summary::before { content: '▸ '; color: var(--gold); }
+.trail[open] > summary::before { content: '▾ '; }
+.trail > summary:hover { color: var(--gold-soft); }
+.trail ul { margin: 0.6em 0 0; padding-left: 1.1em; font-size: 0.83rem; color: var(--ink-3); }
+.trail li { margin-bottom: 0.25em; }
+.trail li b { color: var(--ink-2); font-weight: 600; }
+.trail p { margin-top: 0.6em; }
+.talk__foot:empty { display: none; }
 
 .empty-state {
   text-align: center; padding: clamp(30px, 6vw, 60px) 20px;
@@ -476,7 +543,11 @@ h3.sub {
 .win__why li.plus { color: #a6e3bd; }
 .win__why li.minus { color: #ffbca8; }
 
-.talk__more { margin-top: 0.9em !important; padding-top: 0.8em; border-top: 1px solid var(--line-gold); }
+.talk__more {
+  margin-top: 0.9em !important; padding-top: 0.8em; border-top: 1px solid var(--line-gold);
+  display: flex; align-items: center; gap: 0.7em; flex-wrap: wrap;
+}
+.talk__more-why { flex: 1 1 auto; min-width: 9em; }
 
 /* ---------------------------------------------------------------- варги */
 .varga-grid {
@@ -511,7 +582,7 @@ h3.sub {
   body::before, .starfield { display: none !important; }
 
   .header, .nav, .layout__aside, .footer, .btn, .chart-switch,
-  .locked__gate, .prompts, .modal, .form-card, .empty-state,
+  .locked__gate, .prompts, .composer, .composer__note, .talk__work, .modal, .form-card, .empty-state,
   .nav-toggle, .section-split { display: none !important; }
 
   .layout { display: block; }

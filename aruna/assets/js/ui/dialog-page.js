@@ -1,241 +1,364 @@
 /*
- * Аруна · диалог
- * ------------------------------------------------------------------
- * Ответы собираются из карты собеседника: бхава вопроса, её хозяин и
- * его положение, действующая даша, транзит Луны — и стих, подобранный
- * по теме и по небу дня. Языковой модели здесь нет, и на странице об
- * этом сказано прямо: иначе демонстрация выдавала бы себя за то, чем
- * не является.
+ * Аруна · страница диалога
+ * ==================================================================
+ * Здесь разговор с Дипой. Две дороги, и человек не должен о них думать:
  *
- * «Помнит прошлые беседы» здесь тоже настоящее, хоть и скромное:
- * история тем лежит в localStorage, и Дипа к ней возвращается.
+ *   · рядом поднят сервер (есть вход) → вопрос уходит на /api/talk,
+ *     отвечает языковая модель, ответ появляется по мере того, как
+ *     пишется, а рядом видно, к какому расчёту она обращалась;
+ *   · сервера нет (статичный сайт, файл на диске) → отвечает разбор
+ *     по правилам из assets/js/jyotish/talk.js. Он тоже опирается на
+ *     карту, просто набор ответов у него конечный.
+ *
+ * Обе дороги ведут к одному: ответ привязан к этой карте, а не к
+ * «знаку месяца». Про то, что истолкование пишет модель, на странице
+ * сказано прямо — врать об этом было бы и глупо, и незаконно.
+ *
+ * Пока Дипа обращается к расчёту, человек видит не «печатает…», а что
+ * именно сейчас смотрится: «7-я бхава», «транзит на 2027-03-01»,
+ * «сарвашта-кавварга». Это и ожидание скрашивает, и держит главное
+ * обещание проекта: рядом с выводом видно правило.
  */
 (function (root, doc) {
   'use strict';
 
-  var S = root.Aruna, Acc = root.ArunaAccess, C = root.ArunaChart, P = root.ArunaPanchanga,
-      Dsh = root.ArunaDasha, D = root.ArunaData, Tz = root.ArunaTz,
-      Verses = root.ArunaVerses;
+  var S = root.Aruna, Acc = root.ArunaAccess, D = root.ArunaData, Talk = root.ArunaTalk;
 
-  var HKEY = 'aruna.talk.v1';
+  var HKEY = 'aruna.talk.v2';
   var EXAMPLE = {
     date: '1975-06-15', time: '06:00', timeKnown: true,
     place: { name: 'Москва', lat: 55.7558, lon: 37.6176, tz: 'Europe/Moscow' }
   };
 
-  /* Темы: бхавы, к которым относится вопрос, и слова для ответа.
-     ask — то, что наставник возвращает собеседнику: вопрос, а не совет. */
-  var TOPICS = [
-    { id: 'move', q: 'Никак не решусь на переезд — всё откладываю.',
-      bhavas: [4, 12], themes: ['letting-go', 'doubt'],
-      lead: 'Переезд — это четвёртая бхава: дом, корни, покой ума. И двенадцатая: уход, чужие края, расставание с привычным.',
-      ask: 'Назовите три вещи, которые поедут с вами. Не предметы — привычки. Если все три едут, вы уже переехали, осталось перевезти тело.' },
-    { id: 'work-family', q: 'Что сейчас важнее — дело или семья?',
-      bhavas: [10, 4], themes: ['action', 'dharma'],
-      lead: 'Десятая бхава — дело и положение, четвёртая — дом и покой. Они стоят напротив друг друга не случайно: одно держится на другом.',
-      ask: 'Спросите себя не «что важнее», а «что сейчас просит внимания, а что просто громче кричит». Это разные вещи.' },
-    { id: 'strength', q: 'Почему всё время не хватает сил?',
-      bhavas: [1, 6], themes: ['discipline', 'rest', 'patience'],
-      lead: 'Первая бхава — тело и запас сил, шестая — то, что их тратит: долги, болезни, взятые на себя чужие дела.',
-      ask: 'Посмотрите на последнюю неделю: где вы тратили силы на чужую шестую бхаву? Часто дело не в отдыхе, а в возврате чужого груза.' },
-    { id: 'study', q: 'Хочу учиться, но не идёт. С чего начать?',
-      bhavas: [5, 9], themes: ['learning', 'dharma'],
-      lead: 'Пятая бхава — способность схватывать и творить, девятая — учитель и писание. Учёба идёт, когда работают обе: своя голова и чужой опыт.',
-      ask: 'Возьмите один текст и одного человека, у кого спросить. Не курс, не программу — один текст и один человек.' },
-    { id: 'start', q: 'Стоит ли начинать дело сейчас?',
-      bhavas: [10, 11], themes: ['action', 'time'],
-      lead: 'Десятая бхава — само дело, одиннадцатая — то, что оно принесёт и кто вокруг соберётся.',
-      ask: 'Начинать лучше не «когда звёзды разрешат», а когда готов первый маленький шаг, который не жалко сделать зря. Какой он у вас?' },
-    { id: 'partner', q: 'Тяжело с близким человеком.',
-      bhavas: [7, 2], themes: ['friendship', 'speech', 'equanimity'],
-      lead: 'Седьмая бхава — партнёр и открытая встреча с другим, вторая — речь и то, чем вы делитесь каждый день.',
-      ask: 'Что из невысказанного вы носите дольше месяца? Начните с этого — не с обвинения, а с факта.' },
-    { id: 'let-go', q: 'Что мне пора отпустить?',
-      bhavas: [12, 8], themes: ['letting-go', 'surrender'],
-      lead: 'Двенадцатая бхава — про уход и освобождение, восьмая — про перемены, которые приходят не по нашей воле.',
-      ask: 'Назовите то, что вы держите только потому, что держали вчера. Отпускать по-настоящему приходится однажды, а решаться — каждый день.' },
-    { id: 'today', q: 'О чём мой сегодняшний день?',
-      bhavas: [], themes: [],
-      lead: 'Тон дня задаёт Луна: она обходит всю карту примерно за месяц и каждые два-три дня меняет бхаву.',
-      ask: 'Если день ощущается не так, как написано, — доверяйте себе, а не таблице. Карта описывает погоду, а не ваш выбор.' }
-  ];
+  var state = null;          // контекст карты
+  var busy = false;          // один вопрос за раз
+  var server = { on: false, price: 1, model: false, why: null, left: null, plan: 'free' };
 
-  var state = null;
+  /* ------------------------------------------------------- история */
 
   function loadHistory() {
     try { return JSON.parse(root.localStorage.getItem(HKEY)) || []; } catch (e) { return []; }
   }
   function saveHistory(h) {
-    try { root.localStorage.setItem(HKEY, JSON.stringify(h.slice(-20))); } catch (e) { /* инкогнито */ }
+    try { root.localStorage.setItem(HKEY, JSON.stringify(h.slice(-24))); } catch (e) { /* инкогнито */ }
   }
-
-  /** Контекст карты + неба, из которого строятся ответы. */
-  function context(birth) {
-    var built = S.chartFromBirth(birth);
-    var ch = built.chart;
-    var now = Date.now(), jd = Tz.msToJd(now), tz = birth.place.tz;
-    var pan = P.panchanga(jd, birth.place.lat, birth.place.lon, tz);
-    var ayan = C.ayanamsa(jd);
-    var moonNow = C.describeLongitude(C.toSidereal(pan.positions.moon.lon, ayan));
-    var dasha = Dsh.current(ch.jd, ch.moonNakshatra, ch.grahas.moon.nakFraction, jd);
-    return {
-      birth: birth, chart: ch, pan: pan, now: now, tz: tz, dasha: dasha,
-      moonNow: moonNow, moonBhavaNow: C.bhavaOf(moonNow.rashi, ch.asc.rashi)
-    };
-  }
-
-  /** Описание бхавы в карте: раши, хозяин, где он стоит, кто внутри. */
-  function bhavaSentence(ctx, num) {
-    var b = ctx.chart.bhavas[num - 1];
-    var lordKey = b.lord, lord = ctx.chart.grahas[lordKey];
-    var s = num + '-я бхава у вас в раши ' + b.rashiName + ', её хозяин — ' + D.GRAHAS[lordKey].sa +
-            ', и он стоит в ' + lord.bhava + '-й бхаве';
-    if (lord.dignity && lord.dignity.code !== 'neutral') s += ' (' + lord.dignity.ru + ')';
-    s += '.';
-    if (b.grahas.length) {
-      s += ' Внутри самой бхавы — ' + b.grahas.map(function (k) {
-        return D.GRAHAS[k].sa + (ctx.chart.grahas[k].retro ? ' (вспять)' : '');
-      }).join(', ') + '.';
-    } else {
-      s += ' Грах в ней нет — значит, читаем по хозяину, а не по жильцам.';
-    }
-    return s;
-  }
-
-  function dashaSentence(ctx) {
-    var m = D.GRAHAS[ctx.dasha.maha.lord], a = D.GRAHAS[ctx.dasha.antar.lord];
-    var mb = ctx.chart.grahas[ctx.dasha.maha.lord].bhava;
-    var ab = ctx.chart.grahas[ctx.dasha.antar.lord].bhava;
-    return 'Сейчас у вас махадаша — ' + m.sa + ' (в карте стоит в ' + mb + '-й бхаве), ' +
-           'антардаша — ' + a.sa + ' (в ' + ab + '-й). Это тот слой жизни, который громче ' +
-           'остальных ближайшие месяцы.';
-  }
-
-  function moonSentence(ctx) {
-    return 'Луна сегодня идёт по ' + ctx.moonBhavaNow + '-й бхаве вашей карты — ' +
-           D.BHAVAS[ctx.moonBhavaNow - 1].title + ' (' + ctx.moonNow.nakshatraName + '). ' +
-           'Титхи — ' + ctx.pan.tithi.name + ', ' + ctx.pan.tithi.pakshaRu + '.';
-  }
-
-  /**
-   * Ответ строится в двух глубинах.
-   * Короткий доступен всегда: он уже опирается на карту, а не на общие слова.
-   * Развёрнутый добавляет остальные бхавы, дашу, вопрос в ответ и стих.
-   */
-  function answer(ctx, topic) {
-    var short = [topic.lead];
-    if (topic.bhavas.length) short.push(bhavaSentence(ctx, topic.bhavas[0]));
-    short.push(moonSentence(ctx));
-
-    var deep = [];
-    topic.bhavas.slice(1).forEach(function (n) { deep.push(bhavaSentence(ctx, n)); });
-    deep.push(dashaSentence(ctx));
-    deep.push(topic.ask);
-
-    var pick = Verses.pickVerse({
-      varaLord: ctx.pan.vara ? ctx.pan.vara.lord : null,
-      nakshatraLord: ctx.pan.nakshatra.lord,
-      paksha: ctx.pan.tithi.paksha,
-      tithiName: ctx.pan.tithi.name,
-      dateKey: S.dayKey(ctx.now, ctx.tz) + '/' + topic.id
-    });
-    return { short: short, deep: deep, verse: pick.verse };
-  }
-
-  /* --------------------------------------------------------------- вывод */
-  function bubble(html, who, badge) {
-    var cls = who === 'me' ? 'talk__msg talk__msg--me' : 'talk__msg talk__msg--sa';
-    var head = who === 'me' ? '' :
-      '<p class="talk__who">Дипа' + (badge ? '<span class="talk__badge">' + S.esc(badge) + '</span>' : '') + '</p>';
-    return '<div class="' + cls + '">' + head + html + '</div>';
-  }
-
-  function push(html, toStart) {
-    var talk = doc.getElementById('talk');
-    talk.insertAdjacentHTML('beforeend', html);
-    var last = talk.lastElementChild;
-    // длинный ответ читают с начала, поэтому подкручиваем к его верху,
-    // а короткую реплику собеседника — просто вниз
-    talk.scrollTop = (toStart && last)
-      ? Math.max(0, last.offsetTop - talk.offsetTop - 10)
-      : talk.scrollHeight;
-  }
-
-  function answerHtml(a, topic, deep) {
-    var html = a.short.map(function (p) { return '<p>' + p + '</p>'; }).join('');
-    if (deep) {
-      html += a.deep.map(function (p) { return '<p>' + p + '</p>'; }).join('') +
-        '<p class="talk__verse">' + S.esc(a.verse.ru) + '<br><span class="tiny muted">' +
-        S.esc(a.verse.src + ' ' + a.verse.ref) + '</span></p>';
-    } else {
-      var f = Acc.feature('dialog.deep');
-      html += '<p class="talk__more">' +
-        '<button class="btn btn--ghost btn--sm" type="button" data-deep="' + S.esc(topic.id) + '">' +
-          'Развернуть: остальные бхавы, даша и стих — <span class="seed">' +
-          Acc.seeds(f.price) + '</span>' +
-        '</button></p>';
-    }
-    return html;
-  }
-
-  function ask(topic) {
-    if (!state) return;
-    push(bubble('<p>' + S.esc(topic.q) + '</p>', 'me'));
-    var a = answer(state, topic);
-    var deep = Acc.has('dialog.deep');
-    root.setTimeout(function () {
-      push(bubble(answerHtml(a, topic, deep), 'sa',
-                  'бхавы ' + (topic.bhavas.join(', ') || 'транзит Луны')), true);
-    }, 260);
-
+  function remember(role, text) {
     var h = loadHistory();
-    h.push({ id: topic.id, q: topic.q, at: Date.now() });
+    h.push({ role: role, text: text, at: Date.now() });
     saveHistory(h);
   }
 
-  /** Разворот короткого ответа в подробный — по кнопке внутри реплики. */
-  function expand(btn) {
-    var topic = null;
-    TOPICS.forEach(function (t) { if (t.id === btn.dataset.deep) topic = t; });
-    if (!topic || !state) return;
-    var bubbleEl = btn.closest('.talk__msg');
-    var go = function () {
-      var a = answer(state, topic);
-      var who = bubbleEl.querySelector('.talk__who');
-      bubbleEl.innerHTML = (who ? who.outerHTML : '') + answerHtml(a, topic, true);
-    };
-    if (Acc.has('dialog.deep')) { go(); return; }
-    var r = Acc.unlock('dialog.deep');
-    if (r.ok) go();
-    else S.Paywall.open('dialog.deep', go);
+  /* --------------------------------------------------------- вывод */
+
+  function el(html) {
+    var d = doc.createElement('div');
+    d.innerHTML = html.trim();
+    return d.firstElementChild;
   }
 
-  function greeting(ctx) {
-    var h = loadHistory();
-    var last = h.length ? h[h.length - 1] : null;
-    var lines = [];
-    lines.push('Здравствуйте. Я вижу вашу карту: лагна — ' + ctx.chart.asc.rashiName +
-               ', Луна — ' + ctx.chart.grahas.moon.rashiName + ', накшатра ' +
-               D.NAKSHATRAS[ctx.chart.moonNakshatra].sa + '. ' + moonSentence(ctx));
-    if (last) {
-      var when = S.dateRu(last.at, ctx.tz, { day: 'numeric', month: 'long' });
-      lines.push('В прошлый раз, ' + when + ', вы спрашивали: «' + S.esc(last.q) +
-                 '» Если это ещё живо — вернёмся к нему. Если отпустило, тоже скажите.');
-    } else {
-      lines.push('Спрашивайте о том, что сейчас занимает. Я буду отвечать, глядя на вашу карту, ' +
-                 'а не вообще.');
-    }
-    return bubble(lines.map(function (l) { return '<p>' + l + '</p>'; }).join(''), 'sa',
-                  'видит вашу карту');
+  function talkBox() { return doc.getElementById('talk'); }
+
+  function scrollTo(node, toStart) {
+    var box = talkBox();
+    if (!box) return;
+    box.scrollTop = (toStart && node)
+      ? Math.max(0, node.offsetTop - box.offsetTop - 10)
+      : box.scrollHeight;
   }
+
+  function addMine(text) {
+    var node = el('<div class="talk__msg talk__msg--me"><p>' + S.esc(text) + '</p></div>');
+    talkBox().appendChild(node);
+    scrollTo(node);
+    return node;
+  }
+
+  /** Пузырь Дипы: заголовок, место под текст, место под след расчёта. */
+  function addDipa(badge) {
+    var node = el(
+      '<div class="talk__msg talk__msg--sa">' +
+        '<p class="talk__who">Дипа' +
+          (badge ? '<span class="talk__badge">' + S.esc(badge) + '</span>' : '') +
+        '</p>' +
+        '<div class="talk__work" hidden><span class="talk__pulse"></span><span class="talk__step">смотрит в карту</span></div>' +
+        '<div class="talk__body"></div>' +
+        '<div class="talk__trail" hidden></div>' +
+        '<div class="talk__foot"></div>' +
+      '</div>');
+    talkBox().appendChild(node);
+    scrollTo(node);
+    return {
+      root: node,
+      work: node.querySelector('.talk__work'),
+      step: node.querySelector('.talk__step'),
+      body: node.querySelector('.talk__body'),
+      trail: node.querySelector('.talk__trail'),
+      foot: node.querySelector('.talk__foot')
+    };
+  }
+
+  /** Текст кладём абзацами: модель отдаёт поток, а читается он абзацами. */
+  function paint(box, text) {
+    var parts = String(text).split(/\n{2,}/);
+    var html = '';
+    parts.forEach(function (p) {
+      p = p.replace(/\n/g, ' ').trim();
+      if (p) html += '<p>' + S.esc(p) + '</p>';
+    });
+    box.innerHTML = html;
+  }
+
+  function showWork(ui, label) {
+    ui.work.hidden = false;
+    ui.step.textContent = label;
+  }
+  function hideWork(ui) { ui.work.hidden = true; }
+
+  /** След расчёта: к чему Дипа обращалась, пока писала ответ. */
+  function addTrail(ui, items) {
+    if (!items || !items.length) return;
+    ui.trail.hidden = false;
+    ui.trail.innerHTML =
+      '<details class="trail"><summary>Откуда это: ' + items.length +
+        (items.length === 1 ? ' обращение к расчёту' : ' обращения к расчёту') + '</summary>' +
+      '<ul>' + items.map(function (t) {
+        return '<li><b>' + S.esc(t.title) + '</b>' +
+               (t.detail ? ' — ' + S.esc(t.detail) : '') + '</li>';
+      }).join('') + '</ul>' +
+      '<p class="tiny muted">Дипа истолковывает расчёт, а не придумывает положения: ' +
+      'каждая цифра выше посчитана кодом.</p></details>';
+  }
+
+  /* ----------------------------------------------- кнопка «развернуть» */
+
+  function deepButton(ui, question) {
+    var f = Acc.feature('dialog.deep');
+    var bySub = Acc.has('dialog.deep');
+    var label = bySub ? 'Развернуть — по подписке' : 'Развернуть за ' + Acc.seeds(f.price);
+    var btn = el('<p class="talk__more">' +
+      '<button class="btn btn--ghost btn--sm" type="button">' + S.esc(label) + '</button>' +
+      '<span class="tiny muted talk__more-why">разбор по бхавам, связь с дашей и стих</span>' +
+      '</p>');
+    ui.foot.appendChild(btn);
+    btn.querySelector('button').addEventListener('click', function () {
+      btn.remove();
+      ask(question, true);
+    });
+  }
+
+  /* --------------------------------------------------- разговор: сервер */
+
+  /**
+   * Поток событий с сервера. EventSource не годится — он умеет только GET,
+   * а вопрос уходит телом POST; поэтому читаем поток руками.
+   */
+  function talkServer(question, deep, ui) {
+    var acc = '', trail = [], finished = false;
+
+    var onEvent = function (name, data) {
+      if (name === 'start') {
+        showWork(ui, data.model ? 'смотрит в карту' : 'собирает ответ по правилам');
+        if (typeof data.balance === 'number') Acc.setBalance(data.balance);
+      } else if (name === 'tool') {
+        trail.push(data);
+        showWork(ui, 'смотрит: ' + data.title);
+      } else if (name === 'text') {
+        acc += data.t;
+        hideWork(ui);
+        paint(ui.body, acc);
+        scrollTo(ui.root, deep);
+      } else if (name === 'done') {
+        finished = true;
+        hideWork(ui);
+        paint(ui.body, acc);
+        if (typeof data.balance === 'number') Acc.setBalance(data.balance);
+        server.left = data.left;
+        addTrail(ui, (data.trail && data.trail.length) ? data.trail : trail);
+        if (data.source === 'rules') {
+          ui.foot.appendChild(el('<p class="tiny muted">Ответ собран по правилам: ' +
+            'языковая модель сейчас недоступна.' +
+            (data.refunded ? ' Списанное вернулось — за это платить не нужно.' : '') +
+            '</p>'));
+        } else if (data.partial) {
+          ui.foot.appendChild(el('<p class="tiny muted">Ответ оборвался на середине: ' +
+            S.esc(data.error || 'связь с моделью прервалась') + '. Спросите снова.</p>'));
+        }
+        if (!deep) deepButton(ui, question);
+        remember('assistant', acc);
+        renderQuota();
+      } else if (name === 'error') {
+        finished = true;
+        hideWork(ui);
+        paint(ui.body, acc || ('Не получилось ответить: ' + (data.error || 'сервер молчит') +
+          '. Попробуйте ещё раз — списанное вернулось.'));
+        if (typeof data.balance === 'number') Acc.setBalance(data.balance);
+      }
+    };
+
+    var parse = function (chunk) {
+      // блоки событий разделены пустой строкой
+      chunk.split('\n\n').forEach(function (block) {
+        var name = null, data = '';
+        block.split('\n').forEach(function (line) {
+          if (line.indexOf('event: ') === 0) name = line.slice(7).trim();
+          else if (line.indexOf('data: ') === 0) data += line.slice(6);
+        });
+        if (!name) return;
+        try { onEvent(name, data ? JSON.parse(data) : {}); } catch (e) { /* битый блок пропускаем */ }
+      });
+    };
+
+    return Acc.apiFetch('/api/talk', {
+      method: 'POST',
+      body: JSON.stringify({ birth: state.birth, question: question, deep: deep })
+    }).then(function (res) {
+      if (res.status === 402) {
+        return res.json().then(function (b) {
+          ui.root.remove();
+          S.Paywall.open('dialog.deep', function () { ask(question, true); });
+          return { paywall: true, body: b };
+        });
+      }
+      if (res.status === 429) {
+        return res.json().then(function (b) {
+          hideWork(ui);
+          paint(ui.body, b.error || 'На сегодня предел ответов.');
+          return { limited: true };
+        });
+      }
+      if (!res.ok) {
+        return res.json().catch(function () { return {}; }).then(function (b) {
+          hideWork(ui);
+          paint(ui.body, 'Сервер отказал: ' + (b.error || res.status) + '.');
+          return { failed: true };
+        });
+      }
+      if (!res.body || !res.body.getReader) {
+        // поток не поддерживается — читаем целиком, ответ появится разом
+        return res.text().then(function (t) { parse(t); return {}; });
+      }
+      var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
+      var pump = function () {
+        return reader.read().then(function (r) {
+          if (r.done) {
+            if (buf.trim()) parse(buf);
+            if (!finished) { hideWork(ui); paint(ui.body, acc); }
+            return {};
+          }
+          buf += dec.decode(r.value, { stream: true });
+          // отдаём готовые блоки, недописанный остаток держим в буфере
+          var cut = buf.lastIndexOf('\n\n');
+          if (cut >= 0) {
+            parse(buf.slice(0, cut));
+            buf = buf.slice(cut + 2);
+          }
+          return pump();
+        });
+      };
+      return pump();
+    });
+  }
+
+  /* --------------------------------------------------- разговор: правила */
+
+  function talkLocal(question, deep, ui) {
+    if (deep && !Acc.has('dialog.deep')) {
+      var r = Acc.ADAPTER.localUnlock('dialog.deep');
+      if (!r || !r.ok) {
+        ui.root.remove();
+        S.Paywall.open('dialog.deep', function () { ask(question, true); });
+        return Promise.resolve();
+      }
+    }
+    return new Promise(function (done) {
+      showWork(ui, 'смотрит в карту');
+      // небольшая пауза не для вида: без неё ответ появляется раньше,
+      // чем человек успевает увидеть свою же реплику
+      root.setTimeout(function () {
+        var a = Talk.rulesAnswer(state, question, deep);
+        var parts = a.paragraphs.slice();
+        hideWork(ui);
+        paint(ui.body, parts.join('\n\n'));
+        if (a.verse) {
+          ui.body.appendChild(el('<p class="talk__verse">' + S.esc(a.verse.ru) +
+            '<br><span class="tiny muted">' + S.esc(a.verse.src + ' ' + a.verse.ref) +
+            '</span></p>'));
+        }
+        addTrail(ui, a.trail);
+        if (!deep) deepButton(ui, question);
+        remember('assistant', parts.join('\n\n'));
+        scrollTo(ui.root, deep);
+        renderQuota();
+        done();
+      }, 420);
+    });
+  }
+
+  /* ------------------------------------------------------------ спросить */
+
+  function ask(question, deep) {
+    if (!state || busy) return;
+    question = String(question || '').trim();
+    if (!question) return;
+
+    busy = true;
+    setComposer(false, 'Дипа отвечает…');
+    if (!deep) { addMine(question); remember('user', question); }
+
+    var badge = deep ? 'разбор' : null;
+    var ui = addDipa(badge);
+    var run = (server.on ? talkServer : talkLocal)(question, deep, ui);
+    run.catch(function (e) {
+      hideWork(ui);
+      paint(ui.body, 'Связь прервалась: ' + (e && e.message ? e.message : 'неизвестно') +
+        '. Вопрос никуда не делся — спросите снова.');
+    }).then(function () {
+      busy = false;
+      setComposer(true);
+    });
+  }
+
+  /* ------------------------------------------------------------ композер */
+
+  function setComposer(on, label) {
+    var field = doc.getElementById('askField'), btn = doc.getElementById('askBtn');
+    if (!field) return;
+    field.disabled = !on;
+    btn.disabled = !on;
+    btn.textContent = label || 'Спросить';
+    if (on) field.focus();
+  }
+
+  function grow(field) {
+    field.style.height = 'auto';
+    field.style.height = Math.min(160, field.scrollHeight) + 'px';
+  }
+
+  function renderQuota() {
+    var n = doc.getElementById('quotaLine');
+    if (!n) return;
+    var bits = [];
+    if (server.on && server.left != null) {
+      bits.push('ответов сегодня осталось ' + server.left);
+    }
+    if (Acc.has('dialog.deep')) bits.push('разборы по подписке');
+    else bits.push('развёрнутый ответ — ' + Acc.seeds(Acc.feature('dialog.deep').price) +
+                   ', в кошельке ' + Acc.seeds(Acc.balance()));
+    n.textContent = bits.join(' · ');
+  }
+
+  /* -------------------------------------------------------------- панели */
 
   function renderWho(ctx) {
+    var built = { utcMs: ctx.utcMs };
     var rows = [
       ['Лагна', ctx.chart.asc.rashiName + ' ' + ctx.chart.asc.dms],
-      ['Луна', ctx.chart.grahas.moon.rashiName + ' · ' + D.NAKSHATRAS[ctx.chart.moonNakshatra].sa],
-      ['Даша', D.GRAHAS[ctx.dasha.maha.lord].sa + ' / ' + D.GRAHAS[ctx.dasha.antar.lord].sa],
-      ['Рождение', S.dateRu(S.chartFromBirth(ctx.birth).utcMs, ctx.tz).replace(/\s*г\.$/, '') +
-                   ', ' + ctx.birth.place.name]
+      ['Луна', ctx.chart.grahas.moon.rashiName + ' · ' +
+               D.NAKSHATRAS[ctx.chart.moonNakshatra].sa],
+      ['Даша', ctx.dasha
+        ? D.GRAHAS[ctx.dasha.maha.lord].sa + ' / ' + D.GRAHAS[ctx.dasha.antar.lord].sa
+        : '—'],
+      ['Рождение', S.dateRu(built.utcMs, ctx.tz).replace(/\s*г\.$/, '') + ', ' + ctx.birth.place.name]
     ];
     doc.getElementById('whoRows').innerHTML = rows.map(function (r) {
       return '<dt>' + S.esc(r[0]) + '</dt><dd>' + S.esc(r[1]) + '</dd>';
@@ -245,49 +368,160 @@
       ctx.pan.nakshatra.name;
   }
 
-  function renderPrompts() {
-    doc.getElementById('prompts').innerHTML = TOPICS.map(function (t, i) {
-      return '<button class="prompt-btn" type="button" data-i="' + i + '">' + S.esc(t.q) + '</button>';
+  function renderStarters() {
+    var box = doc.getElementById('prompts');
+    if (!box) return;
+    box.innerHTML = Talk.STARTERS.map(function (q) {
+      return '<button class="prompt-btn" type="button">' + S.esc(q) + '</button>';
     }).join('');
   }
 
+  /** Честная строка о том, чем отвечает Дипа прямо сейчас. */
+  function renderMode() {
+    var n = doc.getElementById('modeNote');
+    if (!n) return;
+    if (server.on && server.model) {
+      n.innerHTML = 'Расчёт — карта, периоды, транзиты, стихи — считается кодом; ' +
+        'эфемерида сверена с независимой. Истолкование пишет языковая модель, и ей ' +
+        'запрещено называть положения, которых нет в расчёте: за каждым ответом ' +
+        'виден след — к чему она обращалась. Мы говорим это прямо, потому что ' +
+        'проверяемость здесь важнее впечатления.';
+    } else if (server.on && !server.model) {
+      n.innerHTML = 'Языковая модель сейчас не отвечает (' + S.esc(server.why || 'нет ключа') +
+        '), поэтому ответы собираются из вашей карты по правилам: бхава вопроса, её хозяин, ' +
+        'идущая даша, небо дня.';
+    } else {
+      n.innerHTML = 'Это витрина без сервера: ответы собираются из вашей карты по правилам — ' +
+        'бхава вопроса, её хозяин, идущая даша, небо дня. Поэтому они разные у разных людей, ' +
+        'но набор их конечен. С сервером на этом месте отвечает наставник с языковой моделью, ' +
+        'памятью беседы и обращением к расчёту.';
+    }
+  }
+
+  /* ----------------------------------------------------------- приветствие */
+
+  function greeting(ctx) {
+    var h = loadHistory();
+    var last = null;
+    for (var i = h.length - 1; i >= 0; i--) if (h[i].role === 'user') { last = h[i]; break; }
+    var lines = [
+      'Здравствуйте. Я вижу вашу карту: лагна — ' + ctx.chart.asc.rashiName + ', Луна — ' +
+      ctx.chart.grahas.moon.rashiName + ', накшатра ' +
+      D.NAKSHATRAS[ctx.chart.moonNakshatra].sa + '. ' + Talk.moonSentence(ctx)
+    ];
+    if (last) {
+      lines.push('В прошлый раз, ' + S.dateRu(last.at, ctx.tz, { day: 'numeric', month: 'long' }) +
+        ', вы спрашивали: «' + last.text + '» Если это ещё живо — вернёмся к нему. Если ' +
+        'отпустило, тоже скажите.');
+    } else {
+      lines.push('Спрашивайте своими словами о том, что сейчас занимает. Я буду отвечать, ' +
+        'глядя на вашу карту, а не вообще.');
+    }
+    var ui = addDipa('видит вашу карту');
+    paint(ui.body, lines.join('\n\n'));
+  }
+
+  /* ---------------------------------------------------------------- запуск */
+
   function boot(birth) {
-    state = context(birth);
+    state = Talk.context(birth);
     renderWho(state);
-    doc.getElementById('talk').innerHTML = greeting(state);
-    renderPrompts();
+    talkBox().innerHTML = '';
+    greeting(state);
+    renderStarters();
+    renderMode();
+    renderQuota();
+    setComposer(true);
   }
 
   function noChart() {
-    doc.getElementById('talk').innerHTML =
-      bubble('<p>Чтобы говорить не вообще, а о вас, мне нужна ваша карта: дата, время и ' +
-             'место рождения. Это займёт полминуты.</p>' +
-             '<p><a class="btn btn--gold btn--sm" href="chart.html">Построить карту</a></p>', 'sa');
-    doc.getElementById('prompts').innerHTML = '';
+    talkBox().innerHTML = '';
+    var ui = addDipa(null);
+    paint(ui.body, 'Чтобы говорить не вообще, а о вас, мне нужна ваша карта: дата, время и ' +
+      'место рождения. Это займёт полминуты.');
+    ui.foot.appendChild(el('<p><a class="btn btn--gold btn--sm" href="chart.html">' +
+      'Построить карту</a></p>'));
+    var p = doc.getElementById('prompts');
+    if (p) p.innerHTML = '';
+    setComposer(false);
+    renderMode();
+  }
+
+  /** Состояние разговора с сервера: доступна ли модель, сколько осталось. */
+  function syncServer() {
+    if (!Acc.isServerMode() || !root.fetch) return Promise.resolve();
+    server.on = true;
+    return Acc.apiFetch('/api/talk/state').then(function (r) {
+      if (!r.ok) { server.on = false; return null; }
+      return r.json();
+    }).then(function (b) {
+      if (!b) { server.on = false; renderMode(); return; }
+      server.model = !!b.model;
+      server.why = b.why;
+      server.left = b.free ? b.free.left : null;
+      server.price = b.price;
+      server.plan = b.plan;
+      if (typeof b.balance === 'number') Acc.setBalance(b.balance);
+      // сервер помнит беседу — подхватываем её как свою
+      if (b.turns && b.turns.length) saveHistory(b.turns);
+      renderMode();
+      renderQuota();
+    }).catch(function () { server.on = false; renderMode(); });
+  }
+
+  function forget() {
+    saveHistory([]);
+    var after = function () {
+      if (state) { talkBox().innerHTML = ''; greeting(state); }
+    };
+    if (server.on) {
+      Acc.apiFetch('/api/talk/forget', { method: 'POST' }).then(after).catch(after);
+    } else after();
   }
 
   function start() {
-    var talk = doc.getElementById('talk');
-    if (!talk) return;
+    var box = talkBox();
+    if (!box) return;
+
     var saved = S.loadBirth();
     if (saved) { try { boot(saved); } catch (e) { noChart(); } } else noChart();
+    syncServer();
 
-    doc.getElementById('prompts').addEventListener('click', function (e) {
-      var b = e.target.closest('.prompt-btn');
-      if (b) ask(TOPICS[+b.dataset.i]);
-    });
-    talk.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-deep]');
-      if (b) expand(b);
-    });
-    doc.getElementById('exampleBtn').addEventListener('click', function () {
-      S.saveBirth(EXAMPLE);
-      boot(EXAMPLE);
-    });
-    doc.getElementById('clearBtn').addEventListener('click', function () {
-      saveHistory([]);
-      if (state) { doc.getElementById('talk').innerHTML = greeting(state); }
-    });
+    var prompts = doc.getElementById('prompts');
+    if (prompts) {
+      prompts.addEventListener('click', function (e) {
+        var b = e.target.closest('.prompt-btn');
+        if (b) ask(b.textContent, false);
+      });
+    }
+
+    var form = doc.getElementById('askForm');
+    var field = doc.getElementById('askField');
+    if (form && field) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var q = field.value.trim();
+        if (!q) return;
+        field.value = '';
+        grow(field);
+        ask(q, false);
+      });
+      field.addEventListener('input', function () { grow(field); });
+      field.addEventListener('keydown', function (e) {
+        // Enter отправляет, Shift+Enter — новая строка: так ведут себя мессенджеры
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          form.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      });
+    }
+
+    var ex = doc.getElementById('exampleBtn');
+    if (ex) ex.addEventListener('click', function () { S.saveBirth(EXAMPLE); boot(EXAMPLE); });
+    var cl = doc.getElementById('clearBtn');
+    if (cl) cl.addEventListener('click', forget);
+
+    Acc.onChange(renderQuota);
   }
 
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', start);

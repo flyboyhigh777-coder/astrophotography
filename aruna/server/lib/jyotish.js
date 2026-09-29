@@ -33,7 +33,8 @@ const FILES = [
   'jyotish/muhurta.js',
   'jyotish/varga.js',
   'jyotish/rectify.js',
-  'jyotish/sarvashtaka.js'
+  'jyotish/sarvashtaka.js',
+  'jyotish/talk.js'
 ];
 
 const sandbox = {
@@ -97,5 +98,6 @@ module.exports = {
   Varga: sandbox.ArunaVarga,
   Rectify: sandbox.ArunaRectify,
   Sarvashtaka: sandbox.ArunaSarvashtaka,
+  Talk: sandbox.ArunaTalk,
   chartFromBirth
 };

@@ -22,6 +22,7 @@ const { Telegram, sleep } = require('./lib/telegram.js');
 const { Store } = require('./lib/store.js');
 const T = require('./lib/texts.js');
 const J = require('./lib/jyotish.js');
+const Dipa = require('./lib/dipa.js');
 
 const esc = Telegram.esc;
 const ROOT = __dirname;
@@ -79,6 +80,7 @@ function linkApi(api) { apiLink = api; }
 
 const COMMANDS = [
   { command: 'today', description: 'День: панчанга, Луна по вашей карте, стих' },
+  { command: 'ask', description: 'Спросить Дипу своими словами' },
   { command: 'chart', description: 'Ваша карта рождения' },
   { command: 'dasha', description: 'Периоды Вимшоттари' },
   { command: 'muhurta', description: 'Хорошее и плохое время сегодня' },
@@ -88,6 +90,7 @@ const COMMANDS = [
   { command: 'stats', description: 'Дневник: на какие бхавы падают тяжёлые дни' },
   { command: 'digest', description: 'Утренняя сводка: включить или выключить' },
   { command: 'birth', description: 'Ввести или изменить данные рождения' },
+  { command: 'forget', description: 'Забыть разговор с Дипой' },
   { command: 'login', description: 'Подтвердить вход на сайте по коду' },
   { command: 'help', description: 'Что умеет бот' }
 ];
@@ -96,6 +99,9 @@ const HELP = [
   '<b>Что я умею</b>',
   '',
   'Считаю вашу джйотиш-карту и говорю о дне, глядя на неё.',
+  '',
+  'Спрашивайте прямо в чат своими словами — отвечу, глядя на вашу карту. ' +
+  'Или командой: /ask почему нет сил.',
   '',
   '/today — небо дня над вашей картой и стих',
   '/chart — карта рождения: лагна, грахи по бхавам, йоги',
@@ -109,6 +115,7 @@ const HELP = [
   '',
   '/digest — утренняя сводка в 7 утра по вашему времени',
   '/birth — изменить данные рождения',
+  '/forget — забыть разговор с Дипой',
   '',
   '<i>Расчёт сидерический, аянамша Лахири, бхавы целыми раши. ' +
   'Точность эфемериды проверена: Луна лучше 15″, планеты в пределах 3,5′.</i>'
@@ -218,6 +225,118 @@ async function finishBirth(chatId, user, city) {
     (CFG.site ? '\n\nПодробные разборы — на сайте: ' + CFG.site : ''));
 }
 
+/* --------------------------------------------------------- разговор */
+
+/*
+ * Дипа в боте. Здесь то же, что на сайте, только короче: мессенджер
+ * читают на ходу.
+ *
+ * Короткий ответ бесплатен. Развёрнутый — за биджу, и списывает её тот
+ * же кошелёк, что на сайте: если человек вошёл на сайт через бота, у него
+ * один баланс на два места. Кошелька рядом нет (бот запущен один) —
+ * говорим об этом прямо, а не делаем вид, что кнопка сломалась.
+ */
+
+const TALK_FREE_PER_DAY = 10;
+
+function talkOf(user) {
+  if (!user.talk || !Array.isArray(user.talk.turns)) {
+    user.talk = { turns: [], note: null, day: null, free: 0, deep: 0 };
+  }
+  const today = T.dayKey(Date.now(), user.birth ? user.birth.place.tz : 'Europe/Moscow');
+  if (user.talk.day !== today) { user.talk.day = today; user.talk.free = 0; user.talk.deep = 0; }
+  return user.talk;
+}
+
+/** Кошелёк с сайта, если сайт поднят рядом. Иначе null. */
+function walletOf(chatId) {
+  if (!apiLink || !apiLink.wallet) return null;
+  try { return apiLink.wallet('tg:' + chatId); } catch (e) { return null; }
+}
+
+function deepPrice() {
+  return apiLink && apiLink.ACCESS ? apiLink.ACCESS.FEATURES['dialog.deep'].price : 1;
+}
+
+/** Ответ Дипы в чат. deep — развёрнутый разбор вместо короткого. */
+async function dipaReply(chatId, user, question, deep) {
+  const talk = talkOf(user);
+
+  if (!deep && talk.free >= TALK_FREE_PER_DAY) {
+    return tg.send(chatId,
+      'На сегодня десять ответов — это предел, он стоит от перерасхода, а не ' +
+      'против вас. Возвращайтесь завтра: /today работает всегда.');
+  }
+
+  let charged = 0, w = null;
+  if (deep) {
+    w = walletOf(chatId);
+    const price = deepPrice();
+    const bySub = w && apiLink.ACCESS && w.plan === apiLink.ACCESS.PLAN.id;
+    if (!w) {
+      return tg.send(chatId,
+        'Развёрнутый разбор считает сайт — он сейчас не запущен рядом со мной. ' +
+        'Короткий ответ у вас уже есть, а разбор будет, когда поднимется ' +
+        '<code>node server/index.js</code>.');
+    }
+    if (!bySub) {
+      if (w.balance < price) {
+        return tg.send(chatId,
+          'Развёрнутый разбор — ' + price + ' биджа, а в кошельке ' + w.balance + '.\n\n' +
+          'Пополнить можно на сайте' + (CFG.site ? ': ' + esc(CFG.site) + '/pricing.html' : '') +
+          '. Короткие ответы остаются бесплатными.');
+      }
+      w.balance -= price;
+      w.spent = (w.spent || 0) + price;
+      charged = price;
+    }
+  }
+
+  await tg.chatAction(chatId);
+  let r;
+  try {
+    r = await Dipa.answer({
+      birth: user.birth, question, deep,
+      history: talk.turns.slice(-12), note: talk.note
+    });
+  } catch (e) {
+    if (charged && w) { w.balance += charged; w.spent -= charged; }
+    return tg.send(chatId, 'Не получилось ответить: ' + esc(e.message) +
+      (charged ? '. Списанное вернулось.' : '.'));
+  }
+
+  talk.turns.push({ role: 'user', text: question, at: Date.now() });
+  talk.turns.push({ role: 'assistant', text: r.text, at: Date.now() });
+  if (talk.turns.length > 24) talk.turns = talk.turns.slice(-24);
+  talk[deep ? 'deep' : 'free'] += 1;
+  user.lastQuestion = question;
+  store.save(user);
+
+  const body = r.paragraphs.map((p) => esc(p)).join('\n\n');
+  const tail = [];
+  if (r.source === 'rules') {
+    tail.push('<i>Собрано по правилам: языковая модель сейчас не отвечает.</i>');
+  }
+  if (r.trail && r.trail.length) {
+    tail.push('<i>Смотрел: ' + r.trail.map((t) => esc(t.title)).join(', ') + '.</i>');
+  }
+  if (charged) tail.push('<i>Списана ' + charged + ' биджа, осталось ' + w.balance + '.</i>');
+
+  const extra = deep ? {} : {
+    reply_markup: { inline_keyboard: [[{
+      text: '⤵ Развернуть за ' + deepPrice() + ' биджу', callback_data: 'deep'
+    }]] }
+  };
+  await tg.send(chatId, body + (tail.length ? '\n\n' + tail.join('\n') : ''), extra);
+
+  // Заметку наставник переписывает после ответа — человека это не задерживает.
+  if (Dipa.available() && talk.turns.length >= 4 && talk.turns.length % 6 === 0) {
+    Dipa.updateNote({ history: talk.turns, note: talk.note }).then((note) => {
+      if (note) { talk.note = note; store.save(user); }
+    }).catch(() => {});
+  }
+}
+
 /* ------------------------------------------------------------- дневник */
 
 const MOOD_KEYBOARD = {
@@ -291,6 +410,23 @@ async function onMessage(msg) {
       });
     }
 
+    if (cmd === 'ask' || cmd === 'dipa') {
+      if (needBirth(chatId, user)) return;
+      const q = text.replace(/^\/\S+\s*/, '').trim();
+      if (!q) {
+        return tg.send(chatId,
+          'Спрашивайте прямо в чат, командой не обязательно: «почему нет сил», ' +
+          '«стоит ли переезжать», «что мне пора отпустить». Отвечу, глядя на вашу карту.');
+      }
+      return dipaReply(chatId, user, q, false);
+    }
+
+    if (cmd === 'forget') {
+      user.talk = { turns: [], note: null, day: null, free: 0, deep: 0 };
+      store.save(user);
+      return tg.send(chatId, 'Разговор забыл: и реплики, и свою заметку. Карта на месте.');
+    }
+
     if (cmd === 'mood') {
       if (needBirth(chatId, user)) return;
       return tg.send(chatId, 'Как прошёл день?', { reply_markup: MOOD_KEYBOARD });
@@ -354,8 +490,10 @@ async function onMessage(msg) {
   }
 
   if (!user.birth) return askBirth(chatId, user);
-  return tg.send(chatId, 'Я понимаю команды — список в /help. ' +
-    'Самое нужное: /today и /muhurta.');
+
+  // Обычный текст — это вопрос Дипе. Так и должно быть: человек пришёл
+  // говорить, а не вспоминать список команд.
+  return dipaReply(chatId, user, text, false);
 }
 
 async function onCallback(cb) {
@@ -388,6 +526,18 @@ async function onCallback(cb) {
     return tg.editText(chatId, cb.message.message_id,
       'Записал: <b>' + label + '</b>. Отметок всего: ' + user.mood.length +
       '.\n\nСтатистика — /stats');
+  }
+
+  if (data === 'deep') {
+    if (!user.birth) { await tg.answerCallback(cb.id, 'Сначала /birth'); return; }
+    const q = user.lastQuestion;
+    if (!q) { await tg.answerCallback(cb.id, 'Вопрос потерялся, спросите снова'); return; }
+    await tg.answerCallback(cb.id, 'Разворачиваю');
+    // кнопку убираем, чтобы её нельзя было нажать дважды и заплатить дважды
+    await tg.call('editMessageReplyMarkup', {
+      chat_id: chatId, message_id: cb.message.message_id, reply_markup: { inline_keyboard: [] }
+    }).catch(() => null);
+    return dipaReply(chatId, user, q, true);
   }
 
   if (data.startsWith('task:')) {
@@ -500,5 +650,5 @@ if (require.main === module) {
 
 module.exports = {
   parseDate, parseTime, onMessage, onCallback, tick, store, tg,
-  linkApi, main, COMMANDS
+  linkApi, main, COMMANDS, dipaReply, talkOf
 };

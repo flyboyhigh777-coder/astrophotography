@@ -123,12 +123,20 @@
   }
 
   /**
-   * Выбор стиха по небу дня.
-   * @param {Object} sky {varaLord, nakshatraLord, paksha, tithiName, dateKey}
+   * Выбор стиха по небу дня — и, если задано, по теме разговора.
+   *
+   * Небо даёт стиху повод («сегодня день Шани»), тема — уместность
+   * («речь шла о том, что пора отпустить»). Тема весит больше неба:
+   * когда человек спросил о конкретном, день — обстоятельство, а не суть.
+   *
+   * @param {Object} sky {varaLord, nakshatraLord, paksha, tithiName, themes, dateKey}
    * @returns {Object} стих + reasons: почему выбран именно он
    */
   function pickVerse(sky) {
     var wanted = [];
+    (sky.themes || []).forEach(function (t) {
+      if (t) wanted.push({ tag: String(t), weight: 5, why: 'тема разговора' });
+    });
     if (sky.varaLord) wanted.push({ tag: sky.varaLord, weight: 3, why: 'хозяин дня' });
     if (sky.nakshatraLord) wanted.push({ tag: sky.nakshatraLord, weight: 3, why: 'хозяин накшатры Луны' });
     wanted.push({ tag: sky.paksha === 'шукла' ? 'shukla-paksha' : 'krishna-paksha',

@@ -98,6 +98,15 @@
           Открытый разбор остаётся у вас навсегда и пересчитывается при любом
           изменении карты — доплачивать за это не нужно.
         </p>
+        <p class="tiny muted" style="margin-top:8px">
+          Исключение одно, и мы его не прячем: <b>развёрнутый ответ в диалоге</b>
+          платится за каждый раз. Остальные разборы — это расчёт: он одинаков,
+          и честно открыть его однажды. Развёрнутый ответ Дипы каждый раз пишется
+          заново, с обращением к расчёту, и каждый раз чего-то стоит нам. Обещать
+          «купи один раз и говори без конца», а потом отобрать — хуже, чем сказать
+          сразу. Короткие ответы по вашей карте при этом бесплатны и без счёта,
+          а по подписке развёрнутые идут без списаний.
+        </p>
       </div>
 
       <div class="panel">
@@ -207,7 +216,9 @@
     return '<tr><td><b>' + S.esc(f.title) + '</b><br><span class="tiny muted">' +
       S.esc(f.free) + '</span></td>' +
       '<td class="small">' + S.esc(f.about) + '</td>' +
-      '<td><span class="seed">' + S.esc(Acc.seeds(f.price)) + '</span></td></tr>';
+      '<td><span class="seed">' + S.esc(Acc.seeds(f.price)) + '</span>' +
+      (f.perUse ? '<br><span class="tiny muted">за каждый раз</span>'
+                : '<br><span class="tiny muted">навсегда</span>') + '</td></tr>';
   }).join('');
 
   doc.getElementById('packs').innerHTML = Acc.PACKS.map(function (p, i) {

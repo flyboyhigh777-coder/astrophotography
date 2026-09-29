@@ -1,0 +1,17 @@
+{
+  "name": "aruna",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Аруна — джйотиш-платформа: сайт, телеграм-бот и сервер с проверкой оплаты",
+  "license": "UNLICENSED",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/index.js",
+    "api": "node server/api.js",
+    "bot": "node server/bot.js",
+    "test": "./test/run_all.sh"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^0.129.0"
+  }
+}
