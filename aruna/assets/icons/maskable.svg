@@ -1,0 +1,14 @@
+<!-- Для маскируемой иконки Android важно, чтобы значимое лежало в
+     центральном круге диаметром 80%: систему вольна обрезать углы. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Аруна">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f4dda9"/>
+      <stop offset="100%" stop-color="#b4853c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="#080b16"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="rgba(224,180,101,.32)" stroke-width="5"/>
+  <circle cx="256" cy="256" r="84" fill="none" stroke="url(#g)" stroke-width="11"/>
+  <circle cx="256" cy="122" r="25" fill="#f4dda9"/>
+</svg>

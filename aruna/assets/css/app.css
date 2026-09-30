@@ -30,16 +30,66 @@
   border: 1px solid var(--line-2); border-radius: 11px;
   padding: 0.7em 0.85em; width: 100%;
   transition: border-color 0.2s ease, background 0.2s ease;
+  /*
+   * Без этого Safari — а на айфоне это все браузеры, включая Chrome и
+   * Яндекс, — рисует свой собственный элемент поверх наших стилей:
+   * список получается белым со светлым текстом, то есть нечитаемым.
+   * Вычисленные свойства при этом выглядят правильно, поэтому увидеть
+   * такое можно только в настоящем движке.
+   */
+  -webkit-appearance: none; appearance: none;
 }
 .input:hover { border-color: var(--line-gold); }
 .input:focus { outline: none; border-color: var(--gold); background: rgba(0, 0, 0, 0.42); }
 .input::placeholder { color: var(--ink-4); }
 /* иконки календаря/часов у тёмной темы по умолчанию чёрные */
 .input::-webkit-calendar-picker-indicator { filter: invert(0.8) sepia(0.5) saturate(3) hue-rotate(2deg); cursor: pointer; }
+
+/* сняв родной вид у списка, надо вернуть стрелку — рисуем свою */
+select.input {
+  padding-right: 2.2em; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23b6bdd2' stroke-width='1.6'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85em center;
+  background-size: 11px 8px;
+}
+/* раскрытый список рисует система: там тёмный текст на светлом фоне */
+select.input option { color: #14182b; background: #eef1f8; }
+
+/* время и дата в Safari прижимаются влево и теряют высоту */
+.input[type="date"], .input[type="time"] { min-height: 2.9em; }
+
+/*
+ * Ниже шестнадцати пикселей iOS увеличивает всю страницу, как только
+ * человек коснётся поля, и обратно её уже не вернуть. Поэтому на
+ * сенсорных экранах поля крупнее — это не про красоту, а про то,
+ * чтобы сайт не «прыгал» под пальцем.
+ */
+@media (pointer: coarse) {
+  /* Общие правила под палец живут в base.css: его грузят все страницы,
+     а app.css — нет (у главной свой landing.css). Здесь остаётся то,
+     что задано классом: селектор по тегу из base.css его не перебьёт. */
+  .input, select.input, .composer__field, textarea { font-size: 16px; }
+  .prompt-btn { min-height: 44px; display: inline-flex; align-items: center; }
+  .w3d-ctl__seg label { min-height: 44px; display: inline-flex; align-items: center; }
+}
 .row-2 { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
 
 .check { display: flex; align-items: flex-start; gap: 0.6em; font-size: 0.89rem; color: var(--ink-2); cursor: pointer; }
-.check input { margin-top: 0.25em; accent-color: var(--gold); width: 16px; height: 16px; flex: none; }
+.check input {
+  margin-top: 0.2em; width: 18px; height: 18px; flex: none; cursor: pointer;
+  /* та же беда, что и со списком: родной чекбокс Safari — белый квадрат */
+  -webkit-appearance: none; appearance: none;
+  border: 1px solid var(--line-2); border-radius: 5px;
+  background: rgba(0, 0, 0, 0.28);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.check input:hover { border-color: var(--line-gold); }
+.check input:checked {
+  background: var(--gold) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 10' fill='none' stroke='%2324170a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 5 4.5 8.5 11 1.5'/%3E%3C/svg%3E") center / 11px 9px no-repeat;
+  border-color: var(--gold);
+}
+.check input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* выпадающий список мест */
 .place-list {
@@ -199,7 +249,8 @@ table.data td.num { font-family: var(--mono); font-size: 0.85rem; color: var(--i
 
 /* ------------------------------------------------------------- диалог */
 .talk {
-  display: grid; gap: 14px; max-height: min(70vh, 760px); overflow-y: auto;
+  display: grid; gap: 14px; max-height: min(70vh, 760px); max-height: min(70dvh, 760px);
+  overflow-y: auto; overscroll-behavior: contain;
   padding: 2px 6px 2px 2px; scroll-behavior: smooth;
   /* края растворяются, иначе обрезанная строка выглядит как поломка вёрстки */
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 18px,
@@ -359,7 +410,8 @@ table.data td.num { font-family: var(--mono); font-size: 0.85rem; color: var(--i
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .modal__box {
-  width: min(560px, 100%); max-height: 86vh; overflow-y: auto;
+  width: min(560px, 100%); max-height: 86vh; max-height: 86dvh;
+  overflow-y: auto; overscroll-behavior: contain;
   background: linear-gradient(170deg, #121734, #0b0e1d);
   border: 1px solid var(--line-gold); border-radius: var(--radius-lg);
   padding: clamp(20px, 3vw, 30px); box-shadow: var(--shadow);

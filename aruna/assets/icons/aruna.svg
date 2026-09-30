@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Аруна">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%">
+      <stop offset="0%" stop-color="#141a33"/>
+      <stop offset="100%" stop-color="#05060e"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f4dda9"/>
+      <stop offset="100%" stop-color="#b4853c"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="196" fill="none" stroke="rgba(224,180,101,.30)" stroke-width="6"/>
+  <circle cx="256" cy="256" r="118" fill="none" stroke="url(#gold)" stroke-width="13"/>
+  <circle cx="256" cy="68" r="34" fill="#f4dda9"/>
+</svg>

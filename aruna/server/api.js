@@ -495,7 +495,12 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
-  '.md': 'text/markdown; charset=utf-8'
+  '.md': 'text/markdown; charset=utf-8',
+  // без этого типа браузер манифест не примет и установку не предложит
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.woff2': 'font/woff2',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp'
 };
 
 function serveStatic(req, res, url) {

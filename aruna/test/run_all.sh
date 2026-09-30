@@ -12,6 +12,8 @@
 # 7. validate_houses      — куспиды против Swiss Ephemeris  (нужен: pip install pyswisseph)
 # 8. validate_ephemeris   — сверка эфемериды с pyephem      (нужен: pip install ephem)
 # 9. browser_check.mjs    — страницы в настоящем Chromium    (нужен: playwright + порт 8099)
+#10. engines_check.mjs   — те же страницы в WebKit и Firefox (нужны: playwright install webkit firefox)
+#11. touch_check.mjs     — цели под палец и шрифт полей на телефоне
 #
 # Пункты 3 и 4 пропускаются, если их зависимостей нет: базовые проверки
 # должны проходить на голом node.
@@ -70,6 +72,15 @@ if command -v npx >/dev/null 2>&1 && [ -d "$(npm root -g)/playwright" ]; then
   srv=$!
   sleep 2
   run "Страницы в Chromium" node test/browser_check.mjs
+  run "Цели под палец на телефоне" node test/touch_check.mjs
+  # WebKit — движок Safari и всех браузеров на айфоне; ставится отдельно
+  if [ -d "$(ls -d "${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"/webkit-* 2>/dev/null | head -1)" ]; then
+    run "Страницы в WebKit и Firefox" node test/engines_check.mjs
+  else
+    echo
+    echo "· прогон по WebKit и Firefox пропущен: движки не установлены"
+    echo "  (npx playwright install webkit firefox)"
+  fi
   kill "$srv" 2>/dev/null
 else
   echo
