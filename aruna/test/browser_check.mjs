@@ -64,6 +64,52 @@ const PAGES = [
              '#aspTable tbody tr', '#openingBox .nb', '.locked']
   },
   {
+    url: '/natal.html', name: 'natal-live',
+    act: async page => {
+      await page.evaluate(() => window.ArunaAccess.reset());
+      await page.click('#exampleBtn');
+      await page.waitForTimeout(900);
+      // наведение оставляет на карте только связи выбранной планеты
+      await page.hover('[data-planet="saturn"]');
+      await page.waitForTimeout(300);
+      const on = await page.$$eval('.nw__p.is-on', e => e.length);
+      const off = await page.$$eval('.nw__p.is-off', e => e.length);
+      if (!on || !off) throw new Error('подсветка планеты не сработала');
+      // щелчок закрепляет выбор, второй снимает
+      await page.click('[data-planet="saturn"]');
+      await page.waitForTimeout(200);
+      await page.mouse.move(40, 40);
+      await page.waitForTimeout(200);
+      if (!(await page.$$eval('.nw__p.is-on', e => e.length))) {
+        throw new Error('щелчок не закрепил выбор');
+      }
+      await page.click('[data-planet="saturn"]');
+      await page.waitForTimeout(200);
+      if (await page.$$eval('.nw__p.is-on', e => e.length)) {
+        throw new Error('повторный щелчок не снял выбор');
+      }
+      // фильтр аспектов
+      await page.click('label[for="aspFilter-none"]');
+      await page.waitForTimeout(150);
+      const vis = await page.$$eval('.nw__asp', e =>
+        e.filter(x => !x.classList.contains('is-hidden')).length);
+      if (vis) throw new Error('фильтр «без них» не спрятал линии');
+      await page.click('label[for="aspFilter-all"]');
+      // плоский вид и обратно
+      await page.click('[data-view="flat"]');
+      await page.waitForTimeout(300);
+      if (!(await page.$eval('.w3d', e => e.classList.contains('is-flat')))) {
+        throw new Error('плоский вид не включился');
+      }
+      await page.click('[data-view="reset"]');
+      await page.waitForTimeout(400);
+      // транзиты вторым кольцом
+      await page.click('#transitToggle');
+      await page.waitForTimeout(700);
+    },
+    filled: ['.w3d__layer--planets', '.w3d-ctl', '[data-wheel-card]', '[data-transit]']
+  },
+  {
     url: '/natal.html', name: 'natal-unlocked',
     act: async page => {
       await page.evaluate(() => window.ArunaAccess.setPlan(window.ArunaAccess.PLAN.id));

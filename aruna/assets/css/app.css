@@ -582,8 +582,14 @@ h3.sub {
   body::before, .starfield { display: none !important; }
 
   .header, .nav, .layout__aside, .footer, .btn, .chart-switch,
+  .w3d-ctl, .wheel-card,
   .locked__gate, .prompts, .composer, .composer__note, .talk__work, .modal, .form-card, .empty-state,
   .nav-toggle, .section-split { display: none !important; }
+  /* на бумаге объём только мешает: углы должны читаться точно */
+  .w3d__stage, .w3d__layer { transform: none !important; transition: none !important; }
+  .w3d { perspective: none; }
+  .nw__p.is-off, .nw__asp.is-off { opacity: 1 !important; }
+
 
   .layout { display: block; }
   .panel {
@@ -654,6 +660,132 @@ h3.sub {
 /* ------------------------------------------------ западная натальная карта */
 .natal-wheel-box { display: grid; place-items: center; margin: 4px 0 10px; }
 .natal-wheel { width: 100%; max-width: 620px; height: auto; }
+
+/* --- объёмное колесо -------------------------------------------------
+ * Слои разведены по оси Z и наклонены как целое. Наклон небольшой и
+ * выключается одним щелчком: колесо — инструмент измерения углов, а
+ * перспектива их искажает. На печать карта всегда уходит плоской.
+ */
+.w3d {
+  --tilt: 18deg; --spin: 0deg; --fit: 1;
+  width: 100%; max-width: 620px; margin: 0 auto;
+  perspective: 1500px; perspective-origin: 50% 46%;
+  touch-action: none;                 /* поворот пальцем, а не прокрутка страницы */
+}
+.w3d__stage {
+  position: relative; width: 100%; aspect-ratio: 1;
+  transform-style: preserve-3d;
+  transform: scale(var(--fit)) rotateX(var(--tilt)) rotateZ(var(--spin));
+  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  /*
+   * Сцена не ловит курсор сама. Иначе её собственная плоскость на нуле
+   * оказывается ближе к зрителю, чем кольца домов, уехавшие назад, и
+   * закрывает их: сектора перестают отзываться. Перетаскивание слушает
+   * внешний .w3d, он вне трёхмерного пространства.
+   */
+  pointer-events: none;
+}
+.w3d { cursor: grab; }
+.w3d.is-dragging { cursor: grabbing; }
+.w3d.is-dragging .w3d__stage { transition: none; }
+.w3d.is-flat .w3d__stage { transform: none; }
+
+.w3d__layer {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  transform-style: preserve-3d; pointer-events: none;
+  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.w3d__layer--back     { transform: translateZ(-46px); }
+.w3d__layer--houses   { transform: translateZ(-22px); }
+.w3d__layer--aspects  { transform: translateZ(0); }
+.w3d__layer--signs    { transform: translateZ(24px); }
+.w3d__layer--transits { transform: translateZ(34px); }
+.w3d__layer--planets  { transform: translateZ(46px); }
+.w3d.is-flat .w3d__layer { transform: none; }
+
+/*
+ * Курсор ловят не слои, а отдельные фигуры. Если разрешить события
+ * целому слою, его <svg> перехватывает их всей своей площадью — и
+ * верхний слой планет закрывает собой сектора домов под ним.
+ */
+.w3d__layer--planets .nw__p { pointer-events: auto; }
+/* ножка тянется от планеты через всё кольцо домов и, будучи частью её
+   группы, перехватывает наведение у сектора под собой: целимся в глиф */
+.nw__stem { pointer-events: none; }
+
+/*
+ * pointer-events: all, а не auto. В SVG значение auto означает
+ * visiblePainted, и прозрачная заливка курсор не ловит — сектор домов
+ * и увеличенная область попадания по планете оказываются мёртвыми.
+ * Значение all проверяет саму фигуру, независимо от того, чем она
+ * закрашена.
+ */
+.nw__hit { fill: transparent; pointer-events: all; }
+.w3d__layer--houses .nw__sector,
+.nw__sector { fill: transparent; pointer-events: all; transition: fill 0.2s ease; cursor: pointer; }
+.nw__sector.is-on { fill: rgba(224, 180, 101, 0.10); }
+.w3d__layer--houses .nw__sector:hover { fill: rgba(224, 180, 101, 0.06); }
+
+/* --- подсветка выбранного ------------------------------------------- */
+.nw__p { cursor: pointer; transition: opacity 0.2s ease; outline: none; }
+.nw__p.is-off { opacity: 0.22; }
+.nw__p.is-on .nw__planet { filter: drop-shadow(0 0 7px rgba(244, 221, 169, 0.75)); }
+.nw__p:focus-visible .nw__planet { filter: drop-shadow(0 0 7px var(--gold)); }
+.nw__p:focus-visible .nw__hit { stroke: var(--gold); stroke-width: 1.5; }
+.nw__asp { transition: opacity 0.2s ease; }
+.nw__asp.is-off { opacity: 0.07; }
+.nw__asp.is-on { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+.nw__asp.is-hidden { display: none; }
+.nw__stem--t { stroke-dasharray: 2 3; }
+
+/* --- панель управления видом ---------------------------------------- */
+.w3d-ctl {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  justify-content: center; margin: 10px 0 2px;
+}
+.w3d-ctl__tilt { display: flex; align-items: center; }
+.w3d-ctl__tilt input[type="range"] { width: 110px; accent-color: var(--gold); }
+.w3d-ctl__seg {
+  display: inline-flex; border: 1px solid var(--line); border-radius: 999px;
+  overflow: hidden; background: var(--surface-2);
+}
+.w3d-ctl__seg input { position: absolute; opacity: 0; pointer-events: none; }
+.w3d-ctl__seg label {
+  font-size: 0.8rem; color: var(--ink-3); padding: 0.42em 0.85em; cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.w3d-ctl__seg label:hover { color: var(--gold-soft); }
+.w3d-ctl__seg input:checked + label { background: rgba(224, 180, 101, 0.14); color: var(--gold-soft); }
+.w3d-ctl__seg input:focus-visible + label { outline: 2px solid var(--gold); outline-offset: -2px; }
+
+/* --- карточка разбора при наведении --------------------------------- */
+.w3d-extra { display: flex; justify-content: center; margin: 8px 0 12px; }
+.w3d-extra .is-on { color: var(--gold-soft); border-color: var(--line-gold); }
+
+.wheel-card {
+  min-height: 132px; padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: var(--radius-sm); background: var(--surface);
+}
+.wc__t { font-weight: 600; color: var(--gold-soft); margin: 0 0 0.3em; font-size: 1rem; }
+.wc__glyph, .wc__g { color: var(--gold); font-size: 1.1em; }
+.wc__about { color: var(--ink-2); font-size: 0.9rem; margin: 0 0 0.7em; }
+.wc__h { font-size: 0.78rem; color: var(--ink-4); margin: 0.8em 0 0.3em;
+         text-transform: uppercase; letter-spacing: 0.06em; }
+.wc__list { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; color: var(--ink-2); }
+.wc__list li { padding: 0.18em 0; }
+.wc__asp--hard .wc__g { color: #d2705e; }
+.wc__asp--soft .wc__g { color: #6f9fd0; }
+.wc__asp--neutral .wc__g { color: var(--gold); }
+.wc__idle { color: var(--ink-3); font-size: 0.88rem; margin: 0; }
+.kv--tight { margin: 0; font-size: 0.88rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .w3d__stage, .w3d__layer, .nw__p, .nw__asp, .nw__sector { transition: none; }
+}
+@media (max-width: 760px) {
+  .w3d { perspective: 1100px; }
+  .w3d-ctl__seg label { padding: 0.42em 0.6em; font-size: 0.75rem; }
+}
 
 .nw__ring { fill: none; stroke: var(--line-2); stroke-width: 1; }
 .nw__ring--faint { stroke: var(--line); }

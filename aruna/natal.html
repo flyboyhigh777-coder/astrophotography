@@ -105,10 +105,16 @@
             аберрацией. Уран, Нептун и Плутон считаются, Хирона нет: его орбита
             требует иной точности, а рисовать правдоподобное число мы не станем.
           </p>
-          <p class="tiny muted">
+          <p class="tiny muted" style="margin-bottom:0.7em">
             Дома: Плацидус, Кох, Региомонтан, Кампанус, Порфирий, равнодомная,
             целознаковая. За полярным кругом четыре первые системы не определены —
             там мы честно отказываемся считать и говорим почему.
+          </p>
+          <p class="tiny muted">
+            Колесо живое: карту можно повернуть перетаскиванием, навести на планету —
+            останутся только её связи, на сектор — подсветится дом. Наклон
+            выключается кнопкой «Плоско», и на печать карта всегда уходит плоской:
+            перспектива искажает углы, а их здесь и измеряют.
           </p>
         </div>
       </aside>
@@ -119,8 +125,16 @@
             <h2>Карта</h2>
             <p class="tiny muted" id="chartMeta">—</p>
           </div>
-          <div id="wheelBox" class="natal-wheel-box"></div>
-          <div class="wheel-legend" id="wheelLegend"></div>
+          <div id="wheelWrap">
+            <div id="wheelBox" class="natal-wheel-box"></div>
+            <div id="wheelCtl"></div>
+            <div class="wheel-legend" id="wheelLegend"></div>
+            <div class="w3d-extra">
+              <button class="btn btn--quiet btn--sm" type="button" id="transitToggle"
+                      aria-pressed="false">Транзиты сегодня</button>
+            </div>
+            <div class="wheel-card" data-wheel-card></div>
+          </div>
         </div>
 
         <div class="panel">
@@ -241,6 +255,7 @@
 <script src="assets/js/natal/wheel.js"></script>
 <script src="assets/js/ui/common.js"></script>
 <script src="assets/js/ui/birthform.js"></script>
+<script src="assets/js/ui/wheel3d.js"></script>
 <script src="assets/js/ui/paywall.js"></script>
 <script src="assets/js/ui/auth.js"></script>
 <script src="assets/js/ui/natal-page.js"></script>

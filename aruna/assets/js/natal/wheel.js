@@ -2,31 +2,36 @@
  * Аруна · западная карта: колесо
  * ==================================================================
  * Обычный для западной традиции чертёж: асцендент слева, дальше
- * против часовой стрелки. Три кольца снаружи внутрь —
+ * против часовой стрелки. Рисуется в двух видах из одних и тех же
+ * частей:
  *
- *   знаки с глифами и границами,
- *   планеты с градусами и пометкой ретроградности,
- *   дома с номерами,
+ *   draw()  — одна плоская SVG. Нужна для печати, для PDF и как
+ *             запасной вариант, если объёмный вид не собрался.
+ *   stage() — те же части, разложенные по слоям: каждый слой —
+ *             отдельная SVG, а объём им даёт CSS-перспектива.
  *
- * а в середине сетка аспектов. Цвет линии говорит о природе аспекта,
- * толщина — о точности: точный аспект виден издали, широкий едва.
+ * Зачем слои. Не ради красоты: в плоском колесе сетка аспектов
+ * лежит в одной плоскости с кольцами и превращается в клубок линий.
+ * Разведённые по глубине, кольца уходят назад, планеты выступают
+ * вперёд, и сетка читается сама собой. Наклон при этом небольшой и
+ * его можно выключить одним щелчком — колесо всё-таки инструмент
+ * измерения углов, и перспектива их искажает.
  *
- * Планеты, стоящие вплотную, разводятся по кругу, иначе глифы
- * наезжают друг на друга и карта становится нечитаемой. Разведение
- * только рисовальное: подписанный градус всегда настоящий.
+ * Все подписи и глифы остаются в плоскости своего слоя: текст,
+ * повёрнутый в перспективе, читается плохо.
  *
- * Возвращается строка SVG. Ни зависимостей, ни сборки — как и всё
- * остальное на этом сайте.
+ * Ни зависимостей, ни сборки — как и всё остальное на этом сайте.
  */
 (function (root) {
   'use strict';
 
-  var D = root.ArunaNatalData, H = root.ArunaHouses;
+  var D = root.ArunaNatalData;
   var RAD = Math.PI / 180;
 
   function esc(s) {
     return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
   function f(n) { return Math.round(n * 100) / 100; }
   function norm360(x) { return ((x % 360) + 360) % 360; }
@@ -37,130 +42,238 @@
    * превращается в россыпь кружочков. U+FE0E (селектор начертания)
    * требует текстового вида, и глиф снова становится знаком.
    */
-  function textGlyph(g) { return g + '\uFE0E'; }
+  function textGlyph(g) { return g + '︎'; }
 
-  /* Аспектные цвета: напряжённые красным, гармоничные синим —
-     договорённость старая и узнаваемая, менять её незачем. */
   var NATURE_CLASS = { hard: 'asp--hard', soft: 'asp--soft', neutral: 'asp--neutral' };
 
-  /**
-   * Колесо натальной карты.
-   * @param {Object} chart карта из natal/chart.js
-   * @param {Object} [o] {size, aspects, showAspects, title, transits}
-   */
-  function draw(chart, o) {
-    o = o || {};
-    var size = o.size || 620;
-    var cx = size / 2, cy = size / 2;
+  /** Радиусы колец. Одни и те же для плоского и объёмного вида. */
+  function geometry(size) {
     var R = size / 2;
+    return {
+      size: size, R: R, cx: R, cy: R,
+      signOut: R * 0.90, signIn: R * 0.785,
+      planet: R * 0.685,
+      houseOut: R * 0.565, houseIn: R * 0.515,
+      asp: R * 0.505,
+      angle: R * 0.955,
+      transit: R * 0.965
+    };
+  }
 
-    var rSignOut = R * 0.90, rSignIn = R * 0.785;   // кольцо знаков
-    var rPlanet = R * 0.685;                         // где стоят глифы планет
-    var rHouseOut = R * 0.565, rHouseIn = R * 0.515; // кольцо домов
-    var rAsp = R * 0.505;                            // круг аспектов
-    var rAngle = R * 0.955;                          // подписи углов снаружи
-
+  /** Части колеса — каждая отдельной строкой SVG-содержимого. */
+  function parts(chart, o) {
+    o = o || {};
+    var g = geometry(o.size || 620);
     var cusps = chart.houses.cusps;
-    // асцендент — слева; долготы растут против часовой стрелки
-    var zero = chart.angles.asc.lon;
+    var zero = chart.angles.asc.lon;            // асцендент слева
+
     function ang(lon) { return 180 + norm360(lon - zero); }
     function pt(r, lon) {
       var a = ang(lon) * RAD;
-      return [cx + r * Math.cos(a), cy - r * Math.sin(a)];
+      return [g.cx + r * Math.cos(a), g.cy - r * Math.sin(a)];
     }
     function line(r1, r2, lon, cls) {
       var p1 = pt(r1, lon), p2 = pt(r2, lon);
       return '<line x1="' + f(p1[0]) + '" y1="' + f(p1[1]) + '" x2="' + f(p2[0]) +
              '" y2="' + f(p2[1]) + '" class="' + cls + '"/>';
     }
+    function ring(r, cls) {
+      return '<circle cx="' + g.cx + '" cy="' + g.cy + '" r="' + f(r) + '" class="' + cls + '"/>';
+    }
+    /**
+     * @param {string} [attrs] дополнительные атрибуты, без угловых скобок
+     * @param {string} [title] всплывающая подсказка
+     */
+    function text(r, lon, cls, body, attrs, title) {
+      var p = pt(r, lon);
+      return '<text x="' + f(p[0]) + '" y="' + f(p[1]) + '" class="' + cls +
+             '" text-anchor="middle" dominant-baseline="central"' + (attrs || '') + '>' +
+             (title ? '<title>' + title + '</title>' : '') + body + '</text>';
+    }
 
-    var s = [];
-    s.push('<svg viewBox="0 0 ' + size + ' ' + size + '" class="natal-wheel" role="img" aria-label="' +
-           esc(o.title || 'Натальная карта: круг знаков, дома, планеты и аспекты') + '">');
-    s.push('<defs><radialGradient id="nwg" cx="50%" cy="50%">' +
-           '<stop offset="0%" stop-color="rgba(224,180,101,0.05)"/>' +
-           '<stop offset="65%" stop-color="rgba(154,134,224,0.07)"/>' +
-           '<stop offset="100%" stop-color="rgba(8,11,22,0)"/></radialGradient></defs>');
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + f(rSignOut) + '" fill="url(#nwg)"/>');
+    /* ------------------------------------------------------- подложка */
+    var backdrop =
+      '<defs><radialGradient id="nwg" cx="50%" cy="50%">' +
+        '<stop offset="0%" stop-color="rgba(224,180,101,0.06)"/>' +
+        '<stop offset="62%" stop-color="rgba(154,134,224,0.09)"/>' +
+        '<stop offset="100%" stop-color="rgba(8,11,22,0)"/></radialGradient>' +
+      '<radialGradient id="nwd" cx="50%" cy="50%">' +
+        '<stop offset="70%" stop-color="rgba(0,0,0,0)"/>' +
+        '<stop offset="100%" stop-color="rgba(0,0,0,0.45)"/></radialGradient></defs>' +
+      '<circle cx="' + g.cx + '" cy="' + g.cy + '" r="' + f(g.signOut) + '" fill="url(#nwg)"/>' +
+      '<circle cx="' + g.cx + '" cy="' + g.cy + '" r="' + f(g.signOut) + '" fill="url(#nwd)"/>';
 
-    /* --- кольцо знаков --- */
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + f(rSignOut) + '" class="nw__ring"/>');
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + f(rSignIn) + '" class="nw__ring"/>');
+    /* --------------------------------------------------- кольцо знаков */
+    var signs = [ring(g.signOut, 'nw__ring'), ring(g.signIn, 'nw__ring')];
     for (var i = 0; i < 12; i++) {
-      var start = i * 30;
-      s.push(line(rSignIn, rSignOut, start, 'nw__signline'));
-      var mid = start + 15;
-      var g = pt((rSignOut + rSignIn) / 2, mid);
-      var sg = D.SIGNS[i];
-      s.push('<text x="' + f(g[0]) + '" y="' + f(g[1]) + '" class="nw__glyph nw__glyph--' +
-             sg.element + '" text-anchor="middle" dominant-baseline="central">' +
-             textGlyph(sg.glyph) + '</text>');
-      // штрихи по 10° внутри знака — глазу проще оценить градус
+      var start = i * 30, sg = D.SIGNS[i];
+      signs.push(line(g.signIn, g.signOut, start, 'nw__signline'));
+      signs.push(text((g.signOut + g.signIn) / 2, start + 15,
+        'nw__glyph nw__glyph--' + sg.element, textGlyph(sg.glyph),
+        ' data-sign="' + i + '"',
+        esc(sg.ru + ' — ' + D.ELEMENTS[sg.element].ru + ', ' + D.MODES[sg.mode].ru +
+            ', управитель ' + D.PLANETS[sg.ruler].ru)));
       for (var d10 = 10; d10 < 30; d10 += 10) {
-        s.push(line(rSignIn, rSignIn + R * 0.022, start + d10, 'nw__tick'));
+        signs.push(line(g.signIn, g.signIn + g.R * 0.022, start + d10, 'nw__tick'));
       }
       for (var d5 = 5; d5 < 30; d5 += 5) {
         if (d5 % 10 === 0) continue;
-        s.push(line(rSignIn, rSignIn + R * 0.012, start + d5, 'nw__tick nw__tick--fine'));
+        signs.push(line(g.signIn, g.signIn + g.R * 0.012, start + d5, 'nw__tick nw__tick--fine'));
       }
     }
-
-    /* --- дома --- */
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + f(rHouseOut) + '" class="nw__ring"/>');
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + f(rHouseIn) + '" class="nw__ring nw__ring--faint"/>');
-    for (var hnum = 1; hnum <= 12; hnum++) {
-      var c1 = cusps[hnum], c2 = cusps[hnum === 12 ? 1 : hnum + 1];
-      var angular = hnum === 1 || hnum === 4 || hnum === 7 || hnum === 10;
-      s.push(line(rHouseIn, rSignIn, c1, angular ? 'nw__cuspline nw__cuspline--angle' : 'nw__cuspline'));
-      var midH = c1 + norm360(c2 - c1) / 2;
-      var hp = pt((rHouseOut + rHouseIn) / 2, midH);
-      s.push('<text x="' + f(hp[0]) + '" y="' + f(hp[1]) + '" class="nw__house" ' +
-             'text-anchor="middle" dominant-baseline="central">' + hnum + '</text>');
-    }
-
-    /* --- углы: подписи ASC / MC / DSC / IC --- */
     [['asc', chart.angles.asc], ['mc', chart.angles.mc],
      ['dsc', chart.angles.dsc], ['ic', chart.angles.ic]].forEach(function (pair) {
-      var a = pair[1];
-      var p = pt(rAngle, a.lon);
-      s.push('<text x="' + f(p[0]) + '" y="' + f(p[1]) + '" class="nw__angle" ' +
-             'text-anchor="middle" dominant-baseline="central">' + esc(a.short) + '</text>');
+      signs.push(text(g.angle, pair[1].lon, 'nw__angle', esc(pair[1].short)));
     });
 
-    /* --- планеты --- */
-    var placed = spread(chart, rPlanet, R);
-    placed.forEach(function (p) {
-      // тонкая ножка от глифа к настоящему градусу
-      s.push(line(rHouseOut, rPlanet - R * 0.045, p.lon, 'nw__stem'));
-      var g = pt(rPlanet, p.drawLon);
-      s.push('<text x="' + f(g[0]) + '" y="' + f(g[1]) + '" class="nw__planet' +
-             (p.retro ? ' nw__planet--retro' : '') + '" text-anchor="middle" ' +
-             'dominant-baseline="central">' + textGlyph(p.meta.glyph) + '</text>');
-      var lp = pt(rPlanet - R * 0.072, p.drawLon);
-      s.push('<text x="' + f(lp[0]) + '" y="' + f(lp[1]) + '" class="nw__deg" ' +
-             'text-anchor="middle" dominant-baseline="central">' +
-             Math.floor(p.deg) + (p.retro ? '℞' : '') + '</text>');
-    });
+    /* ---------------------------------------------------- кольцо домов */
+    var houses = [ring(g.houseOut, 'nw__ring'), ring(g.houseIn, 'nw__ring nw__ring--faint')];
+    for (var hn = 1; hn <= 12; hn++) {
+      var c1 = cusps[hn], c2 = cusps[hn === 12 ? 1 : hn + 1];
+      var angular = hn === 1 || hn === 4 || hn === 7 || hn === 10;
+      var span = norm360(c2 - c1);
+      // сектор дома — прозрачная область под курсор, подсветка через CSS
+      houses.push(sector(g, pt, c1, span, hn));
+      houses.push(line(g.houseIn, g.signIn, c1,
+        angular ? 'nw__cuspline nw__cuspline--angle' : 'nw__cuspline'));
+      houses.push(text((g.houseOut + g.houseIn) / 2, c1 + span / 2, 'nw__house', String(hn)));
+    }
 
-    /* --- аспекты --- */
-    s.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + f(rAsp) + '" class="nw__ring nw__ring--faint"/>');
-    if (o.aspects && o.showAspects !== false) {
+    /* -------------------------------------------------------- аспекты */
+    var aspects = [ring(g.asp, 'nw__ring nw__ring--faint')];
+    if (o.aspects) {
       o.aspects.list.forEach(function (x) {
         if (!x.major && !o.minorLines) return;
         var pa = lonOfPoint(chart, x.a), pb = lonOfPoint(chart, x.b);
         if (pa === null || pb === null) return;
-        var q1 = pt(rAsp, pa), q2 = pt(rAsp, pb);
-        var w = 0.6 + 1.9 * x.strength;
-        s.push('<line x1="' + f(q1[0]) + '" y1="' + f(q1[1]) + '" x2="' + f(q2[0]) +
-               '" y2="' + f(q2[1]) + '" class="nw__asp ' + NATURE_CLASS[x.nature] +
-               '" stroke-width="' + f(w) + '"><title>' +
-               esc(x.aRu + ' ' + x.ru.toLowerCase() + ' ' + x.bRu + ', орб ' +
-                   x.orbDiff.toFixed(1) + '°') + '</title></line>');
+        var q1 = pt(g.asp, pa), q2 = pt(g.asp, pb);
+        aspects.push('<line x1="' + f(q1[0]) + '" y1="' + f(q1[1]) + '" x2="' + f(q2[0]) +
+          '" y2="' + f(q2[1]) + '" class="nw__asp ' + NATURE_CLASS[x.nature] +
+          '" stroke-width="' + f(0.6 + 1.9 * x.strength) + '"' +
+          ' data-a="' + esc(x.a) + '" data-b="' + esc(x.b) +
+          '" data-aspect="' + esc(x.aspect) + '" data-nature="' + esc(x.nature) +
+          '" data-orb="' + x.orbDiff.toFixed(2) + '"' +
+          (x.orbDiff <= 1 ? ' data-tight="1"' : '') + '>' +
+          '<title>' + esc(x.aRu + ' ' + x.ru.toLowerCase() + ' ' + x.bRu + ', орб ' +
+            x.orbDiff.toFixed(1) + '°') + '</title></line>');
       });
     }
 
-    s.push('</svg>');
-    return s.join('');
+    /* -------------------------------------------------------- планеты */
+    var placed = spread(chart, g.planet, g.R);
+    var planets = [];
+    placed.forEach(function (p) {
+      var stem = line(g.houseOut, g.planet - g.R * 0.045, p.lon, 'nw__stem');
+      var gl = pt(g.planet, p.drawLon);
+      var lp = pt(g.planet - g.R * 0.072, p.drawLon);
+      var house = chart.planets[p.key] ? chart.planets[p.key].house : null;
+      planets.push(
+        '<g class="nw__p" data-planet="' + esc(p.key) + '" tabindex="0" role="button" ' +
+        'aria-label="' + esc(p.meta.ru + ', ' + p.signRu + ' ' + p.dms +
+          (house ? ', ' + house + '-й дом' : '') + (p.retro ? ', вспять' : '')) + '">' +
+        stem +
+        '<circle cx="' + f(gl[0]) + '" cy="' + f(gl[1]) + '" r="' + f(g.R * 0.045) +
+          '" class="nw__hit"/>' +
+        '<text x="' + f(gl[0]) + '" y="' + f(gl[1]) + '" class="nw__planet' +
+          (p.retro ? ' nw__planet--retro' : '') + '" text-anchor="middle" ' +
+          'dominant-baseline="central">' + textGlyph(p.meta.glyph) + '</text>' +
+        '<text x="' + f(lp[0]) + '" y="' + f(lp[1]) + '" class="nw__deg" text-anchor="middle" ' +
+          'dominant-baseline="central">' + Math.floor(p.deg) + (p.retro ? '℞' : '') + '</text>' +
+        '</g>');
+    });
+
+    /* ------------------------------------------------------- транзиты */
+    var transits = [];
+    if (o.transits && o.transits.length) {
+      transits.push(ring(g.transit - g.R * 0.055, 'nw__ring nw__ring--faint'));
+      var spreadT = spreadPoints(o.transits, 7);
+      spreadT.forEach(function (p) {
+        var meta = D.PLANETS[p.key];
+        if (!meta) return;
+        transits.push(
+          '<g class="nw__t" data-transit="' + esc(p.key) + '">' +
+          line(g.transit - g.R * 0.055, g.transit - g.R * 0.03, p.lon, 'nw__stem nw__stem--t') +
+          '<text x="' + f(pt(g.transit, p.drawLon)[0]) + '" y="' + f(pt(g.transit, p.drawLon)[1]) +
+            '" class="nw__planet nw__planet--transit' + (p.retro ? ' nw__planet--retro' : '') +
+            '" text-anchor="middle" dominant-baseline="central">' +
+            '<title>' + esc('транзит: ' + meta.ru + ' в ' + D.SIGNS[D.signOf(p.lon)].in +
+            ' ' + D.dms(D.degInSign(p.lon))) + '</title>' + textGlyph(meta.glyph) + '</text>' +
+          '</g>');
+      });
+    }
+
+    return {
+      geometry: g,
+      backdrop: backdrop,
+      signs: signs.join(''),
+      houses: houses.join(''),
+      aspects: aspects.join(''),
+      planets: planets.join(''),
+      transits: transits.join('')
+    };
+  }
+
+  /** Сектор дома — дуга под курсор; подсветка включается классом. */
+  function sector(g, pt, from, span, num) {
+    var a = pt(g.houseIn, from), b = pt(g.signIn, from);
+    var c = pt(g.signIn, from + span), d = pt(g.houseIn, from + span);
+    var big = span > 180 ? 1 : 0;
+    return '<path class="nw__sector" data-house="' + num + '" d="' +
+      'M' + f(a[0]) + ' ' + f(a[1]) +
+      'L' + f(b[0]) + ' ' + f(b[1]) +
+      'A' + f(g.signIn) + ' ' + f(g.signIn) + ' 0 ' + big + ' 0 ' + f(c[0]) + ' ' + f(c[1]) +
+      'L' + f(d[0]) + ' ' + f(d[1]) +
+      'A' + f(g.houseIn) + ' ' + f(g.houseIn) + ' 0 ' + big + ' 1 ' + f(a[0]) + ' ' + f(a[1]) +
+      'Z"/>';
+  }
+
+  function svg(cls, size, inner, extra) {
+    return '<svg viewBox="0 0 ' + size + ' ' + size + '" class="' + cls + '" ' +
+      (extra || 'aria-hidden="true" focusable="false"') + '>' + inner + '</svg>';
+  }
+
+  /* ------------------------------------------------ плоское колесо */
+
+  /**
+   * Одна SVG со всем сразу. Для печати и как запасной вариант.
+   */
+  function draw(chart, o) {
+    o = o || {};
+    var p = parts(chart, o);
+    var size = p.geometry.size;
+    return svg('natal-wheel', size,
+      p.backdrop + p.houses + p.aspects + p.signs + p.planets + p.transits,
+      'role="img" aria-label="' + esc(o.title ||
+        'Натальная карта: круг знаков, дома, планеты и аспекты') + '"');
+  }
+
+  /* ----------------------------------------------- объёмное колесо */
+
+  /**
+   * Те же части, разложенные по слоям. Каждый слой — отдельная SVG,
+   * поднятая по оси Z: подложка глубже всех, планеты выше всех.
+   * Глубину и наклон задаёт CSS, поэтому без него разметка остаётся
+   * обычным стопкой лежащим колесом, а не ломается.
+   *
+   * @param {Object} o {size, aspects, transits, tilt, spin}
+   */
+  function stage(chart, o) {
+    o = o || {};
+    var p = parts(chart, o);
+    var size = p.geometry.size;
+    var L = [];
+    L.push(svg('w3d__layer w3d__layer--back', size, p.backdrop));
+    L.push(svg('w3d__layer w3d__layer--houses', size, p.houses));
+    L.push(svg('w3d__layer w3d__layer--aspects', size, p.aspects));
+    L.push(svg('w3d__layer w3d__layer--signs', size, p.signs));
+    if (p.transits) L.push(svg('w3d__layer w3d__layer--transits', size, p.transits));
+    L.push(svg('w3d__layer w3d__layer--planets', size, p.planets,
+      'role="img" aria-label="' + esc('Планеты натальной карты') + '"'));
+
+    return '<div class="w3d" data-tilt="' + (o.tilt === undefined ? 18 : o.tilt) + '" ' +
+      'data-spin="' + (o.spin || 0) + '">' +
+      '<div class="w3d__stage">' + L.join('') + '</div>' +
+      '</div>';
   }
 
   function lonOfPoint(chart, key) {
@@ -177,22 +290,26 @@
    * остаётся и в подписи, и в ножке к кольцу домов.
    */
   function spread(chart, rPlanet, R) {
-    var minGap = 7;                       // градусов между глифами
     var list = D.PLANET_ORDER
       .filter(function (k) { return chart.planets[k]; })
       .map(function (k) {
         var p = chart.planets[k];
-        return { key: k, lon: p.lon, drawLon: p.lon, deg: p.deg, retro: p.retro, meta: p.meta };
-      })
-      .sort(function (a, b) { return a.lon - b.lon; });
+        return { key: k, lon: p.lon, drawLon: p.lon, deg: p.deg, dms: p.dms,
+                 signRu: p.signRu, retro: p.retro, meta: p.meta };
+      });
+    return spreadPoints(list, 7);
+  }
 
-    var n = list.length;
-    if (!n) return list;
-    // несколько проходов расталкивания по кругу — просто и устойчиво
+  /** Расталкивание по кругу: несколько проходов, просто и устойчиво. */
+  function spreadPoints(list, minGap) {
+    var arr = list.slice().sort(function (a, b) { return a.lon - b.lon; });
+    arr.forEach(function (p) { if (p.drawLon === undefined) p.drawLon = p.lon; });
+    var n = arr.length;
+    if (!n) return arr;
     for (var pass = 0; pass < 60; pass++) {
       var moved = false;
       for (var i = 0; i < n; i++) {
-        var a = list[i], b = list[(i + 1) % n];
+        var a = arr[i], b = arr[(i + 1) % n];
         var gap = norm360(b.drawLon - a.drawLon);
         if (gap < minGap) {
           var push = (minGap - gap) / 2;
@@ -203,32 +320,11 @@
       }
       if (!moved) break;
     }
-    return list;
+    return arr;
   }
 
-  /**
-   * Двойное колесо: натальная карта внутри, транзиты снаружи.
-   * Нужно там, где смотрят «что сейчас над картой».
-   */
-  function dual(chart, outer, o) {
-    o = o || {};
-    var size = o.size || 620;
-    var inner = draw(chart, Object.assign({}, o, { size: size }));
-    if (!outer || !outer.length) return inner;
-    var cx = size / 2, cy = size / 2, R = size / 2;
-    var zero = chart.angles.asc.lon;
-    var rOut = R * 0.805;
-    var add = [];
-    outer.forEach(function (p) {
-      var a = (180 + norm360(p.lon - zero)) * RAD;
-      var x = cx + rOut * Math.cos(a), y = cy - rOut * Math.sin(a);
-      add.push('<text x="' + f(x) + '" y="' + f(y) + '" class="nw__planet nw__planet--transit' +
-               (p.retro ? ' nw__planet--retro' : '') + '" text-anchor="middle" ' +
-               'dominant-baseline="central">' +
-               (D.PLANETS[p.key] ? textGlyph(D.PLANETS[p.key].glyph) : '·') + '</text>');
-    });
-    return inner.replace('</svg>', add.join('') + '</svg>');
-  }
-
-  root.ArunaNatalWheel = { draw: draw, dual: dual, spread: spread };
+  root.ArunaNatalWheel = {
+    draw: draw, stage: stage, parts: parts, geometry: geometry,
+    spread: spread, spreadPoints: spreadPoints, lonOfPoint: lonOfPoint
+  };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

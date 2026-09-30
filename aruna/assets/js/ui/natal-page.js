@@ -16,7 +16,7 @@
   'use strict';
 
   var S = root.Aruna, Acc = root.ArunaAccess, D = root.ArunaNatalData,
-      N = root.ArunaNatal, H = root.ArunaHouses, Asp = root.ArunaAspects,
+      N = root.ArunaNatal, H = root.ArunaHouses, Asp = root.ArunaAspects, A = root.ArunaAstro,
       Dg = root.ArunaDignities, Shp = root.ArunaShape, Tr = root.ArunaTransits,
       I = root.ArunaInterpret, W = root.ArunaNatalWheel, Tz = root.ArunaTz;
 
@@ -26,7 +26,7 @@
     place: { name: 'Москва', lat: 55.7558, lon: 37.6176, tz: 'Europe/Moscow' }
   };
 
-  var form = null, state = null;
+  var form = null, state = null, live = null;
 
   function esc(s) { return S.esc(s); }
   function el(id) { return doc.getElementById(id); }
@@ -291,13 +291,41 @@
         D.SIGNS[nx.to].in + ' — ' + fmtDate(nx.jd) + '.', null) : '');
   }
 
+  /** Транзиты сегодняшнего дня — вторым кольцом снаружи. */
+  function todayTransits() {
+    var pos = A.tropicalPositions(Tz.msToJd(Date.now()));
+    return ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn',
+            'uranus', 'neptune', 'pluto'].map(function (k) {
+      return { key: k, lon: pos[k].lon, retro: pos[k].speed < 0 };
+    });
+  }
+
   function renderWheel(chart, asp) {
-    el('wheelBox').innerHTML = W.draw(chart, { aspects: asp, size: 620 });
+    var box = el('wheelBox');
+    var opts = { aspects: asp, size: 620, transits: showTransits() ? todayTransits() : null };
+    // Без модуля поведения объёмное колесо не повернуть и не подсветить —
+    // тогда честнее нарисовать плоское, оно самодостаточно.
+    if (!S.Wheel3d) {
+      box.innerHTML = W.draw(chart, opts);
+      el('wheelLegend').innerHTML = '';
+      return;
+    }
+    box.innerHTML = W.stage(chart, opts);
+    // панель управления рисуется самим модулем: разметка и поведение
+    // должны жить рядом, иначе они разъезжаются при первой же правке
+    var ctl = el('wheelCtl');
+    if (ctl) ctl.innerHTML = S.Wheel3d.controls();
     el('wheelLegend').innerHTML =
       '<span><i class="lg lg--hard"></i>напряжённые</span>' +
       '<span><i class="lg lg--soft"></i>гармоничные</span>' +
       '<span><i class="lg lg--neutral"></i>соединения</span>' +
       '<span class="tiny muted">толщина линии — точность аспекта</span>';
+    live = S.Wheel3d.attach(el('wheelWrap'), { chart: chart, aspects: asp });
+  }
+
+  function showTransits() {
+    var b = el('transitToggle');
+    return !!(b && b.getAttribute('aria-pressed') === 'true');
   }
 
   /** Кошелёк в боковой колонке — цена не должна быть сюрпризом. */
@@ -380,6 +408,16 @@
       S.saveBirth(v.value);
       draw(v.value);
     });
+    var tt = el('transitToggle');
+    if (tt) {
+      tt.addEventListener('click', function () {
+        var on = tt.getAttribute('aria-pressed') === 'true';
+        tt.setAttribute('aria-pressed', String(!on));
+        tt.classList.toggle('is-on', !on);
+        if (state) renderWheel(state.chart, state.asp);
+      });
+    }
+
     el('exampleBtn').addEventListener('click', function () {
       form.setValue(EXAMPLE);
       S.saveBirth(EXAMPLE);
