@@ -15,6 +15,8 @@
 #10. engines_check.mjs   — те же страницы в WebKit и Firefox (нужны: playwright install webkit firefox)
 #11. touch_check.mjs     — цели под палец и шрифт полей на телефоне
 #12. submit_check.mjs    — нажатие самих кнопок расчёта: форма, город, сдвиг
+#13. today.test.js       — день по знаку, словарь терминов и слова ко дню
+#14. glossary_check.mjs  — подсказки к словам мышью, пальцем и с клавиатуры
 #
 # Пункты 3 и 4 пропускаются, если их зависимостей нет: базовые проверки
 # должны проходить на голом node.
@@ -37,6 +39,7 @@ run "Телеграм-бот: весь диалог"       node test/bot.test.js
 run "Сервер: вход, оплата, разборы"   node test/api.test.js
 run "Дипа: разговор и оплата за раз"  node test/dipa.test.js
 run "Западная натальная карта"        node test/natal.test.js
+run "День по знаку и словарь слов"    node test/today.test.js
 
 if python3 -c "import swisseph" 2>/dev/null; then
   echo
@@ -75,6 +78,7 @@ if command -v npx >/dev/null 2>&1 && [ -d "$(npm root -g)/playwright" ]; then
   run "Страницы в Chromium" node test/browser_check.mjs
   run "Цели под палец на телефоне" node test/touch_check.mjs
   run "Кнопки расчёта под нажатием" node test/submit_check.mjs
+  run "Подсказки к словам и словарь" node test/glossary_check.mjs
   # WebKit — движок Safari и всех браузеров на айфоне; ставится отдельно
   if [ -d "$(ls -d "${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"/webkit-* 2>/dev/null | head -1)" ]; then
     run "Страницы в WebKit и Firefox" node test/engines_check.mjs

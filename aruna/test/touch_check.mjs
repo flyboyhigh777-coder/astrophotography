@@ -3,8 +3,8 @@
    Две вещи, которые видно только на телефоне и только в настоящем
    движке:
 
-   · цель под палец. Apple и Google сходятся на 44 пикселях. Ссылки
-     внутри абзаца из проверки исключены — их раздувать нельзя, они
+   · цель под палец. Apple и Google сходятся на 44 пикселях. Исключены
+     ссылки внутри абзаца и слова с подсказкой: их раздувать нельзя, они
      разорвут строку, и рекомендации их прямо исключают;
    · размер шрифта в полях. Ниже шестнадцати пикселей iOS увеличивает
      всю страницу, едва коснёшься поля, и обратно её уже не вернуть.
@@ -18,7 +18,7 @@ const require = createRequire(import.meta.url);
 const pw = require(path.join(execSync('npm root -g').toString().trim(), 'playwright'));
 const cp = (() => { const b='/opt/pw-browsers'; const d=fs.readdirSync(b).find(x=>/^chromium-\d+$/.test(x));
   return d ? path.join(b,d,'chrome-linux','chrome') : undefined; })();
-const PAGES = ['/index.html','/natal.html','/chart.html','/dialog.html','/pricing.html','/compat.html','/muhurta.html','/rectify.html','/legal.html'];
+const PAGES = ['/index.html','/today.html','/glossary.html','/natal.html','/chart.html','/dialog.html','/pricing.html','/compat.html','/muhurta.html','/rectify.html','/legal.html'];
 const b = await pw.webkit.launch();
 const ctx = await b.newContext({ viewport:{width:390,height:844}, deviceScaleFactor:2, locale:'ru-RU',
   timezoneId:'Europe/Moscow', hasTouch:true, isMobile:true });
@@ -37,12 +37,20 @@ for (const u of PAGES) {
       // ссылку внутри абзаца раздувать нельзя — она разорвёт строку,
       // и рекомендации по размеру цели её прямо исключают
       const inProse = e.tagName === 'A' && e.closest('p, li, dd, summary');
+      /*
+       * Слово с подсказкой — тот же случай и та же причина: это слово в
+       * строке, а не кнопка на панели. Раздуть его до сорока четырёх
+       * пикселей значит разорвать текст, ради читаемости которого оно и
+       * сделано. Промах пальцем здесь ничего не ломает: подсказка просто
+       * не откроется или откроется соседняя.
+       */
+      const inlineTerm = e.classList.contains('term');
       // у чекбокса цель — подпись вокруг него, а не сам квадрат
       const wrapped = e.type === 'checkbox' && e.closest('label');
       // ссылка «перейти к содержанию» спрятана и появляется только по фокусу
       const skip = b.width <= 2 && b.height <= 2;
       if (skip) return;
-      if (inProse || wrapped) return;
+      if (inProse || wrapped || inlineTerm) return;
       if (b.height < 44 || b.width < 30) out.push(t + ' — ' + Math.round(b.width)+'×'+Math.round(b.height));
     });
     return out;

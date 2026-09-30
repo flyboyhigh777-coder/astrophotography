@@ -25,6 +25,10 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const PAGES = [
   { url:'/index.html', name:'главная', filled:['#skyRows'] },
+  { url:'/glossary.html', name:'словарь', filled:['.gl dt'] },
+  { url:'/today.html', name:'день по знаку',
+    act: async p => { await p.click('.sign'); await p.waitForTimeout(900); },
+    filled:['.gr-list .gr','.today-wish','.verse-panel .verse__ru','#today .term'] },
   { url:'/natal.html', name:'наталка', act: async p => { await p.click('#exampleBtn'); await p.waitForTimeout(1200); },
     filled:['#posTable tbody tr','.w3d__layer--planets','#aspTable tbody tr'] },
   { url:'/chart.html', name:'джйотиш', act: async p => { await p.click('#exampleBtn'); await p.waitForTimeout(900); },

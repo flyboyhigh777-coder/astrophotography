@@ -122,6 +122,7 @@
       out.innerHTML = S.Paywall.section('muhurta.pick',
         reportHtml(r, place.tz, label), previewHtml(r, place.tz, label));
       S.Paywall.bind(out, run);
+      if (S.Glossary) S.Glossary.apply(out);
     }
     renderWallet();
   }

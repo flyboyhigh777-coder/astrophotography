@@ -162,6 +162,7 @@
   function render(pair) {
     var out = doc.getElementById('results');
     out.innerHTML = report(pair.a, pair.b);
+    if (S.Glossary) S.Glossary.apply(out);
     S.Paywall.bind(out, function () { render(pair); });
     var box = doc.getElementById('walletBox');
     if (box) {

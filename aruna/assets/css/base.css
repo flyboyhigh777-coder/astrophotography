@@ -301,7 +301,12 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
 
 .nav-toggle { display: none; background: none; border: 0; padding: 8px; cursor: pointer; color: var(--ink); }
 
-@media (max-width: 860px) {
+/*
+ * Граница свёрнутого меню — по тому, где оно перестаёт влезать в строку,
+ * а не по круглому числу. С восемью разделами полный ряд держится до
+ * 1000px; ниже он переносился на вторую строку и шапка раздваивалась.
+ */
+@media (max-width: 1000px) {
   .header__inner { min-height: 60px; }
   .nav-toggle { display: inline-flex; }
   .nav {
@@ -421,3 +426,59 @@ html.js .reveal:not(.is-in) { opacity: 0; transform: translateY(18px); }
   content: ''; height: 1px; width: min(180px, 22vw);
   background: linear-gradient(90deg, transparent, var(--line-gold), transparent);
 }
+
+/* --------------------------------------------------- слова с подсказкой */
+/*
+ * Термин остаётся словом в строке, а не превращается в ссылку: пунктир
+ * снизу и ничего больше. Так текст читается ровно, но видно, что слово
+ * можно потрогать. Кнопка — потому что это действие, а не переход;
+ * заодно её находит Tab и озвучивают экранные дикторы.
+ */
+.term {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0;
+  border-bottom: 1px dashed var(--line-gold, rgba(224, 180, 101, 0.45));
+  cursor: help; text-align: inherit;
+  /* внутри таблиц и заголовков кнопка не должна ломать строку */
+  display: inline; line-height: inherit;
+}
+.term:hover, .term[aria-expanded='true'] {
+  color: var(--gold-soft);
+  border-bottom-color: var(--gold);
+}
+.term:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px; border-radius: 3px;
+}
+
+.termtip {
+  position: absolute; z-index: 90; max-width: min(320px, calc(100vw - 24px));
+  background: #10142a; color: var(--ink);
+  border: 1px solid var(--line-2); border-radius: 12px;
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.75);
+  padding: 12px 14px;
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  pointer-events: auto;
+}
+.termtip.is-open { opacity: 1; transform: none; }
+.termtip__word {
+  font-family: var(--serif); font-size: 1rem; color: var(--gold-soft);
+  margin-bottom: 0.35em;
+}
+.termtip__text { font-size: 0.88rem; line-height: 1.55; color: var(--ink-2); }
+
+/* носик: маленький ромб, повёрнутый углом к слову */
+.termtip::after {
+  content: ''; position: absolute; left: var(--nose, 50%);
+  width: 9px; height: 9px; margin-left: -5px;
+  background: #10142a; border: 1px solid var(--line-2);
+  transform: rotate(45deg);
+}
+.termtip::after { top: -5px; border-right: 0; border-bottom: 0; }
+.termtip--above::after { top: auto; bottom: -5px; border: 1px solid var(--line-2); border-left: 0; border-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .termtip { transition: none; }
+}
+.termtip__more { margin-top: 0.6em; font-size: 0.8rem; }
+.termtip__more a { color: var(--gold-soft); }

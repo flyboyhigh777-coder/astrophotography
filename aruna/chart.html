@@ -38,14 +38,13 @@
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
     </button>
     <nav class="nav" id="nav" aria-label="Основная навигация">
-      <a href="chart.html" aria-current="page">Карта и день</a>
-      <a href="natal.html">Натальная карта</a>
+      <a href="chart.html" aria-current="page">Карта</a>
       <a href="compat.html">Совместимость</a>
       <a href="dialog.html">Диалог</a>
       <a href="muhurta.html">Выбор времени</a>
       <a href="rectify.html">Время рождения</a>
+      <a href="natal.html">Натальная карта</a>
       <a href="pricing.html">Тарифы</a>
-      <a href="index.html#faq">Вопросы</a>
     </nav>
   </div>
 </header>
@@ -113,6 +112,18 @@
         <div class="empty-state">
           <h3>Карта пока не построена</h3>
           <p>Заполните дату, время и место слева — расчёт займёт доли секунды и останется на вашем устройстве.</p>
+          <ol class="howto-steps">
+            <li class="howto-steps__i"><span class="howto-steps__n" aria-hidden="true">1</span>
+              <span><strong>Введите дату, время и город рождения.</strong> Время важнее, чем кажется:
+              от него зависит лагна, а от неё — вся раскладка домов. Не помните точного — поставьте
+              галочку, посчитаем на полдень.</span></li>
+            <li class="howto-steps__i"><span class="howto-steps__n" aria-hidden="true">2</span>
+              <span><strong>Смотрите сверху вниз.</strong> Сначала три строки итога, потом сама карта,
+              потом небо сегодняшнего дня. Таблицы ниже — для тех, кто захочет подробностей.</span></li>
+            <li class="howto-steps__i"><span class="howto-steps__n" aria-hidden="true">3</span>
+              <span><strong>Непонятные слова подчёркнуты точками.</strong> Наведите мышью или коснитесь
+              пальцем — появится объяснение в одно-два предложения.</span></li>
+          </ol>
         </div>
       </div>
     </div>
@@ -124,6 +135,8 @@
     <div class="footer__bottom" style="margin-top:0;border-top:0">
       <span>© <span id="year">2026</span> Аруна</span>
       <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+      <a href="glossary.html">Словарь</a>
+      <a href="index.html#faq">Вопросы</a>
       <a href="index.html">На главную</a>
     </div>
   </div>
@@ -144,7 +157,10 @@
 <script src="assets/js/jyotish/strength.js"></script>
 <script src="assets/js/jyotish/forecast.js"></script>
 <script src="assets/js/ui/chartview.js"></script>
+<script src="assets/js/data/glossary.js"></script>
 <script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/glossary.js"></script>
+<script src="assets/js/ui/howto.js"></script>
 <script src="assets/js/ui/birthform.js"></script>
 <script src="assets/js/ui/paywall.js"></script>
 <script src="assets/js/ui/auth.js"></script>

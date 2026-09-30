@@ -22,6 +22,13 @@ fs.mkdirSync(OUT, { recursive: true });
 // пустые, пока не нажать кнопку); filled — то, что обязано быть непустым после.
 const PAGES = [
   { url: '/index.html', name: 'landing', filled: ['#skyDate', '#skyRows', '#verseSa', '#verseRef'] },
+  { url: '/glossary.html', name: 'glossary', filled: ['.gl dt', '.gl dd'] },
+  {
+    url: '/today.html', name: 'today',
+    // выбор знака — единственное действие на странице; всё прочее считается само
+    act: async page => { await page.click('.sign'); await page.waitForTimeout(900); },
+    filled: ['.today-wish', '.gr-list .gr', '.verse-panel .verse__ru', '#today .term']
+  },
   {
     url: '/chart.html', name: 'chart',
     act: async page => { await page.click('#exampleBtn'); await page.waitForTimeout(400); },

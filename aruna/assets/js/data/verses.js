@@ -109,17 +109,76 @@
     { src: 'Шримад-Бхагаватам', ref: '10.14.8',
       sa: 'tat te ’nukampāṁ su-samīkṣamāṇo bhuñjāna evātma-kṛtaṁ vipākam',
       ru: 'Кто принимает последствия своих же поступков, видя в них Твою милость, — тот идёт к освобождению.',
-      themes: ['saturn', 'rahu', 'patience', 'letting-go', 'krishna-paksha'] }
+      themes: ['saturn', 'rahu', 'patience', 'letting-go', 'krishna-paksha'] },
+    { src: 'Бхагавад-гита', ref: '2.3',
+      sa: 'klaibyaṁ mā sma gamaḥ pārtha naitat tvayy upapadyate / kṣudraṁ hṛdaya-daurbalyaṁ tyaktvottiṣṭha parantapa',
+      ru: 'Не поддавайся слабости — она тебе не к лицу. Отбрось эту мелкую немощь сердца и встань.',
+      themes: ['mars', 'sun', 'action', 'courage', 'shukla-paksha'] },
+    { src: 'Бхагавад-гита', ref: '3.8',
+      sa: 'niyataṁ kuru karma tvaṁ karma jyāyo hy akarmaṇaḥ / śarīra-yātrāpi ca te na prasiddhyed akarmaṇaḥ',
+      ru: 'Делай положенное тебе дело: действие лучше бездействия. Без него не поддержать даже собственного тела.',
+      themes: ['saturn', 'mars', 'action', 'discipline'] },
+    { src: 'Бхагавад-гита', ref: '4.38',
+      sa: 'na hi jñānena sadṛśaṁ pavitram iha vidyate / tat svayaṁ yoga-saṁsiddhaḥ kālenātmani vindati',
+      ru: 'Нет ничего чище знания. Кто утвердился в своём труде, со временем находит его в себе самом.',
+      themes: ['mercury', 'jupiter', 'learning', 'time'] },
+    { src: 'Бхагавад-гита', ref: '12.15',
+      sa: 'yasmān nodvijate loko lokān nodvijate ca yaḥ / harṣāmarṣa-bhayodvegair mukto yaḥ sa ca me priyaḥ',
+      ru: 'Кто не тревожит других и сам не тревожится от них, кто свободен от восторга, досады и страха, — тот дорог.',
+      themes: ['venus', 'jupiter', 'equanimity', 'friendship'] },
+    { src: 'Бхагавад-гита', ref: '17.16',
+      sa: 'manaḥ-prasādaḥ saumyatvaṁ maunam ātma-vinigrahaḥ / bhāva-saṁśuddhir ity etat tapo mānasam ucyate',
+      ru: 'Ясность ума, мягкость, молчание, владение собой, чистота намерения — вот подвижничество умом.',
+      themes: ['moon', 'mercury', 'mind', 'rest', 'krishna-paksha'] },
+    { src: 'Бхагавад-гита', ref: '18.47',
+      sa: 'śreyān sva-dharmo viguṇaḥ para-dharmāt sv-anuṣṭhitāt / svabhāva-niyataṁ karma kurvan nāpnoti kilbiṣam',
+      ru: 'Лучше своё дело, сделанное хуже, чем чужое, сделанное лучше. Кто делает то, к чему рождён, не берёт на себя вины.',
+      themes: ['saturn', 'mars', 'dharma', 'action'] },
+    { src: 'Бхагавад-гита', ref: '18.63',
+      sa: 'iti te jñānam ākhyātaṁ guhyād guhyataraṁ mayā / vimṛśyaitad aśeṣeṇa yathecchasi tathā kuru',
+      ru: 'Я рассказал тебе знание сокровеннее сокровенного. Обдумай всё до конца — и поступай как хочешь.',
+      themes: ['jupiter', 'sun', 'dharma', 'doubt'] },
+    { src: 'Бхагавад-гита', ref: '15.1',
+      sa: 'ūrdhva-mūlam adhaḥ-śākham aśvatthaṁ prāhur avyayam / chandāṁsi yasya parṇāni yas taṁ veda sa veda-vit',
+      ru: 'Говорят о нетленном дереве ашваттха: корни вверху, ветви внизу, а листья его — гимны. Кто знает это дерево, знает писания.',
+      themes: ['jupiter', 'ketu', 'learning', 'time'] },
+    { src: 'Шримад-Бхагаватам', ref: '1.2.17',
+      sa: 'śṛṇvatāṁ sva-kathāḥ kṛṣṇaḥ puṇya-śravaṇa-kīrtanaḥ / hṛdy antaḥ-stho hy abhadrāṇi vidhunoti suhṛt satām',
+      ru: 'Тому, кто слушает рассказы о Нём, Кришна — друг праведных, стоящий в сердце, — вычищает оттуда дурное.',
+      themes: ['moon', 'jupiter', 'surrender', 'purnima'] },
+    { src: 'Шримад-Бхагаватам', ref: '11.2.42',
+      sa: 'bhaktiḥ pareśānubhavo viraktir anyatra caiṣa trika eka-kālaḥ / prapadyamānasya yathāśnataḥ syus tuṣṭiḥ puṣṭiḥ kṣud-apāyo ’nu-ghāsam',
+      ru: 'Любовь, опыт Высшего и отход от прочего приходят вместе — как с каждым куском еды приходят и довольство, и сила, и утоление голода.',
+      themes: ['saturn', 'ketu', 'surrender', 'letting-go', 'amavasya'] }
   ];
 
-  /** Детерминированный хеш строки — чтобы один и тот же день давал один стих. */
+  /*
+   * Детерминированный хеш строки — чтобы один и тот же день давал один
+   * и тот же стих.
+   *
+   * FNV-1a сам по себе для этого не годится. Выбор идёт как остаток от
+   * деления на размер круга, то есть по младшим битам, а у FNV они
+   * почти не перемешиваются: последнее действие — умножение, и низ
+   * результата тянется из низа предыдущего шага. На ключах вида
+   * «30 сентября 2026/Овен», где различие в конце строки, круг из
+   * четырёх стихов выдавал один и тот же в семи случаях из десяти.
+   *
+   * Поэтому после FNV идёт добивка из murmur3: два сдвига с XOR и два
+   * умножения размешивают старшие биты в младшие. Числа те же, что в
+   * оригинале, — они подобраны так, чтобы каждый входной бит влиял на
+   * каждый выходной.
+   */
   function hash(str) {
     var h = 2166136261;
     for (var i = 0; i < str.length; i++) {
       h ^= str.charCodeAt(i);
-      h = (h * 16777619) >>> 0;
+      h = Math.imul(h, 16777619) >>> 0;
     }
-    return h;
+    h ^= h >>> 16;
+    h = Math.imul(h, 2246822507) >>> 0;
+    h ^= h >>> 13;
+    h = Math.imul(h, 3266489909) >>> 0;
+    return (h ^ (h >>> 16)) >>> 0;
   }
 
   /**
@@ -134,8 +193,20 @@
    */
   function pickVerse(sky) {
     var wanted = [];
+    /*
+     * Тема задаётся либо строкой — тогда она весит как прямой вопрос
+     * человека, либо парой {tag, weight} — для тех случаев, когда связь
+     * есть, но слабая. Хозяин знака на странице дня как раз такой: он
+     * должен подкрашивать выбор, а не сводить его к трём стихам.
+     */
     (sky.themes || []).forEach(function (t) {
-      if (t) wanted.push({ tag: String(t), weight: 5, why: 'тема разговора' });
+      if (!t) return;
+      if (typeof t === 'string') {
+        wanted.push({ tag: t, weight: 5, why: 'тема разговора' });
+      } else if (t.tag) {
+        wanted.push({ tag: String(t.tag), weight: t.weight || 5,
+                      why: t.why || 'тема разговора' });
+      }
     });
     if (sky.varaLord) wanted.push({ tag: sky.varaLord, weight: 3, why: 'хозяин дня' });
     if (sky.nakshatraLord) wanted.push({ tag: sky.nakshatraLord, weight: 3, why: 'хозяин накшатры Луны' });
@@ -157,7 +228,11 @@
     // Берём не единственного лидера, а всех, кто отстал не более чем на один
     // вес: небо дня задаёт круг подходящих стихов, дата выбирает внутри него.
     // Так стих остаётся связанным с небом, но месяц не повторяет три текста.
-    var pool = scored.filter(function (s) { return s.score >= Math.max(1, max - 1); });
+    // Ширина круга подходящих. Единица — для разговора, где важна
+    // точность попадания; на странице дня круг шире, иначе за месяц
+    // человек увидит три стиха и решит, что сайт сломан.
+    var band = sky.spread || 1;
+    var pool = scored.filter(function (s) { return s.score >= Math.max(1, max - band); });
     if (!pool.length) pool = scored;
     var pick = pool[hash(sky.dateKey || '') % pool.length];
     return { verse: pick.verse, reasons: pick.reasons, score: pick.score, poolSize: pool.length };

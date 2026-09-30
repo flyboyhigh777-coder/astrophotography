@@ -48,6 +48,7 @@
     </button>
 
     <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="today.html">Сегодня</a>
       <a href="#jyotish">Джйотиш</a>
       <a href="#shastry">Шастры</a>
       <a href="#dialog">Диалог</a>
@@ -154,6 +155,30 @@
           <path d="M110 22v52" stroke="rgba(255,255,255,.18)" stroke-dasharray="3 4"/>
         </svg>
         <a class="btn btn--quiet" href="compat.html">Сопоставить карты →</a>
+      </article>
+
+      <article class="card card--hover feature reveal">
+        <span class="chip chip--gold">Каждый день заново</span>
+        <h3>День по знаку — считанный, а не сочинённый</h3>
+        <p>
+          То, что печатают гороскопами, в джйотише считается: смотрят, в каком
+          доме от вашего знака стоит сегодня каждая граха. Мы считаем это по
+          таблицам «Пхаладипики» вместе с ведхой — правилом, которое отменяет
+          хороший проход, если его загораживают, и которое обычно выбрасывают.
+          <a href="today.html">Посмотреть сегодняшний день</a>
+        </p>
+        <svg class="feature__art" viewBox="0 0 220 96" aria-hidden="true">
+          <g stroke="rgba(224,180,101,.30)" fill="none">
+            <circle cx="110" cy="48" r="38"/><circle cx="110" cy="48" r="26"/>
+          </g>
+          <g fill="rgba(244,221,169,.85)">
+            <circle cx="110" cy="10" r="2.6"/><circle cx="143" cy="29" r="2"/>
+            <circle cx="143" cy="67" r="2"/><circle cx="110" cy="86" r="2"/>
+            <circle cx="77" cy="67" r="2"/><circle cx="77" cy="29" r="2.6"/>
+          </g>
+          <path d="M110 10 L143 67 L77 67 Z" stroke="rgba(116,199,184,.45)" fill="none"/>
+        </svg>
+        <a class="btn btn--quiet" href="today.html">Что сегодня на небе →</a>
       </article>
 
       <article class="card card--hover feature reveal">
@@ -593,13 +618,14 @@
       <div>
         <h4>Расчёты</h4>
         <ul>
-          <li><a href="chart.html">Карта и день</a>
-      <a href="natal.html">Натальная карта</a></li>
+          <li><a href="today.html">День по знаку</a></li>
+          <li><a href="chart.html">Карта и день</a></li>
           <li><a href="compat.html">Совместимость</a></li>
           <li><a href="muhurta.html">Выбор времени</a></li>
           <li><a href="rectify.html">Время рождения</a></li>
           <li><a href="natal.html">Натальная карта</a></li>
           <li><a href="dialog.html">Диалог с Дипой</a></li>
+          <li><a href="glossary.html">Словарь слов</a></li>
         </ul>
       </div>
       <div>
@@ -636,7 +662,9 @@
 <script src="assets/js/jyotish/panchanga.js"></script>
 <script src="assets/js/data/cities.js"></script>
 <script src="assets/js/ui/chartview.js"></script>
+<script src="assets/js/data/glossary.js"></script>
 <script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/glossary.js"></script>
 <script src="assets/js/ui/landing.js"></script>
 </body>
 </html>

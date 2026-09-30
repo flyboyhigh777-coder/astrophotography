@@ -933,3 +933,116 @@ table.data .asp-soft { color: #6f9fd0; }
 table.data .asp-neutral { color: var(--gold); }
 table.data tr.row--strong td { background: rgba(224, 180, 101, 0.045); }
 table.data tr.row--soft td { color: var(--ink-3); }
+
+/* ------------------------------------------------------- день по знаку */
+/*
+ * Двенадцать знаков сеткой, а не выпадающим списком: свой знак человек
+ * узнаёт глазами, и выбор из списка тут лишний шаг. На узком экране
+ * три в ряд, на широком — шесть.
+ */
+.sign-grid {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (min-width: 560px) { .sign-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 900px) { .sign-grid { grid-template-columns: repeat(6, 1fr); } }
+
+.sign {
+  display: grid; gap: 2px; padding: 0.7em 0.5em;
+  font: inherit; text-align: center; cursor: pointer;
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 12px;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+.sign:hover { border-color: var(--line-gold); }
+.sign__ru { font-size: 0.95rem; }
+.sign__sa { font-size: 0.74rem; color: var(--ink-4); }
+.sign.is-on {
+  background: rgba(224, 180, 101, 0.12);
+  border-color: var(--gold); color: var(--gold-soft);
+}
+.sign.is-on .sign__sa { color: var(--gold-soft); opacity: 0.75; }
+.sign:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.today-head .today-moon { font-size: 1.05rem; margin-bottom: 0.4em; }
+.today-head .today-moon__where { color: var(--ink-3); margin-bottom: 0.9em; }
+.today-wish {
+  font-family: var(--serif); font-size: 1.12rem; line-height: 1.6;
+  color: var(--gold-soft);
+  border-left: 2px solid var(--line-gold);
+  padding-left: 0.9em; margin: 0 0 0.9em;
+}
+
+/* список грах: глиф слева, смысл справа */
+.gr-list { display: grid; gap: 10px; list-style: none; }
+.gr {
+  display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+  padding: 0.7em 0.8em; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+.gr--good { border-color: rgba(116, 199, 184, 0.32); background: rgba(116, 199, 184, 0.07); }
+.gr--hard { border-color: rgba(224, 112, 79, 0.26); background: rgba(224, 112, 79, 0.06); }
+.gr--mid  { border-color: rgba(154, 134, 224, 0.30); background: rgba(154, 134, 224, 0.07); }
+.gr__glyph { font-size: 1.2rem; line-height: 1.3; color: var(--gold-soft); }
+.gr__name { font-weight: 500; }
+.gr__where { color: var(--ink-3); }
+.gr__note {
+  display: block; margin-top: 0.45em;
+  font-size: 0.85rem; line-height: 1.5; color: var(--ink-4);
+}
+
+.verse-panel .verse__sa {
+  font-style: italic; color: var(--ink-3); line-height: 1.65; margin-bottom: 0.7em;
+}
+.verse-panel .verse__ru {
+  font-family: var(--serif); font-size: 1.1rem; line-height: 1.65; margin-bottom: 0.6em;
+}
+.verse-panel .verse__ref { font-size: 0.85rem; color: var(--ink-4); }
+
+/* ------------------------------------------------- «как этим пользоваться» */
+.howto-steps { display: grid; gap: 12px; list-style: none; margin: 16px 0 0; counter-reset: none; }
+.howto-steps__i { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; }
+.howto-steps__n {
+  display: grid; place-items: center; width: 26px; height: 26px; flex: none;
+  font-size: 0.82rem; color: #24170a; background: var(--gold-soft);
+  border-radius: 50%;
+}
+.howto-steps__i strong { color: var(--ink); font-weight: 500; }
+.howto-steps__i span:last-child { color: var(--ink-3); line-height: 1.6; }
+
+.howto {
+  margin: 0 0 18px; padding: 0;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px;
+}
+.howto > summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0.85em 1em; cursor: pointer;
+  font-family: var(--serif); font-size: 1rem; color: var(--ink);
+  list-style: none;
+}
+.howto > summary::-webkit-details-marker { display: none; }
+.howto > summary::after {
+  content: ''; margin-left: auto; width: 8px; height: 8px;
+  border-right: 1.5px solid var(--ink-4); border-bottom: 1.5px solid var(--ink-4);
+  transform: rotate(45deg); transition: transform 0.2s ease;
+}
+.howto[open] > summary::after { transform: rotate(-135deg); }
+.howto__icon {
+  display: grid; place-items: center; width: 22px; height: 22px; flex: none;
+  font-size: 0.8rem; color: var(--gold-soft);
+  border: 1px solid var(--line-gold); border-radius: 50%;
+}
+.howto__list { padding: 0 1em 1em; display: grid; gap: 10px; }
+.howto__list dt { color: var(--gold-soft); font-size: 0.9rem; }
+.howto__list dd { color: var(--ink-3); font-size: 0.92rem; line-height: 1.6; margin: 0 0 0.3em; }
+@media (prefers-reduced-motion: reduce) { .howto > summary::after { transition: none; } }
+
+/* ------------------------------------------------------------ словарь */
+.gl { display: grid; gap: 4px; }
+.gl dt {
+  font-family: var(--serif); font-size: 1.05rem; color: var(--gold-soft);
+  margin-top: 0.9em; scroll-margin-top: 90px;
+}
+.gl dt:first-child { margin-top: 0; }
+.gl dd { color: var(--ink-2); line-height: 1.65; margin: 0; }
+.gl dt.is-hit { background: rgba(224, 180, 101, 0.14); border-radius: 6px; padding: 0 0.35em; }

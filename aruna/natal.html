@@ -38,14 +38,13 @@
       <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
     </button>
     <nav class="nav" id="nav" aria-label="Основная навигация">
-      <a href="chart.html">Карта и день</a>
-      <a href="natal.html" aria-current="page">Натальная карта</a>
+      <a href="chart.html">Карта</a>
       <a href="compat.html">Совместимость</a>
       <a href="dialog.html">Диалог</a>
       <a href="muhurta.html">Выбор времени</a>
       <a href="rectify.html">Время рождения</a>
+      <a href="natal.html" aria-current="page">Натальная карта</a>
       <a href="pricing.html">Тарифы</a>
-      <a href="index.html#faq">Вопросы</a>
     </nav>
   </div>
 </header>
@@ -127,6 +126,7 @@
       </aside>
 
       <div class="layout__main" id="results" hidden>
+        <div id="natalHowto"></div>
         <div class="panel">
           <div class="panel__head">
             <h2>Карта</h2>
@@ -227,6 +227,17 @@
       <div class="layout__main" id="empty">
         <div class="empty-state">
           <p>Заполните данные рождения слева — и карта появится здесь.</p>
+          <ol class="howto-steps">
+            <li class="howto-steps__i"><span class="howto-steps__n" aria-hidden="true">1</span>
+              <span><strong>Введите дату, время и город рождения.</strong> От времени зависит асцендент
+              и границы домов; планеты за сутки почти не сдвигаются.</span></li>
+            <li class="howto-steps__i"><span class="howto-steps__n" aria-hidden="true">2</span>
+              <span><strong>Колесо можно повернуть.</strong> Потяните мышью или пальцем; ползунок
+              «Плоско» возвращает карту в привычный вид. Наведите на планету — останутся только её связи.</span></li>
+            <li class="howto-steps__i"><span class="howto-steps__n" aria-hidden="true">3</span>
+              <span><strong>Систему домов можно менять.</strong> Планеты от этого не двигаются,
+              а дома разъезжаются — и видно, насколько выбор школы меняет чтение.</span></li>
+          </ol>
           <p class="tiny muted" style="margin-top:0.8em">
             Расчёт идёт в вашем браузере: дата и место рождения никуда не отправляются.
           </p>
@@ -241,6 +252,8 @@
     <div class="footer__bottom" style="margin-top:0;border-top:0">
       <span>© <span id="year">2026</span> Аруна</span>
       <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+      <a href="glossary.html">Словарь</a>
+      <a href="index.html#faq">Вопросы</a>
       <a href="index.html">На главную</a>
     </div>
   </div>
@@ -260,7 +273,10 @@
 <script src="assets/js/natal/transits.js"></script>
 <script src="assets/js/natal/interpret.js"></script>
 <script src="assets/js/natal/wheel.js"></script>
+<script src="assets/js/data/glossary.js"></script>
 <script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/glossary.js"></script>
+<script src="assets/js/ui/howto.js"></script>
 <script src="assets/js/ui/birthform.js"></script>
 <script src="assets/js/ui/wheel3d.js"></script>
 <script src="assets/js/ui/paywall.js"></script>

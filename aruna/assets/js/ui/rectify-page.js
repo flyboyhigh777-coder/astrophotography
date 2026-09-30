@@ -178,6 +178,7 @@
     var label = win.options[win.selectedIndex].text;
     out.innerHTML = S.Paywall.section('rectify.run', resultHtml(res, label), previewHtml(res));
     S.Paywall.bind(out, run);
+    if (S.Glossary) S.Glossary.apply(out);
     renderWallet();
     out.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
