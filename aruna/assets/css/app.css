@@ -650,3 +650,73 @@ h3.sub {
   background: rgba(224, 180, 101, 0.10); border: 1px solid var(--line-gold);
   user-select: all;
 }
+
+/* ------------------------------------------------ западная натальная карта */
+.natal-wheel-box { display: grid; place-items: center; margin: 4px 0 10px; }
+.natal-wheel { width: 100%; max-width: 620px; height: auto; }
+
+.nw__ring { fill: none; stroke: var(--line-2); stroke-width: 1; }
+.nw__ring--faint { stroke: var(--line); }
+.nw__signline { stroke: var(--line-2); stroke-width: 1; }
+.nw__tick { stroke: var(--line); stroke-width: 1; }
+.nw__tick--fine { stroke: rgba(255, 255, 255, 0.06); }
+.nw__cuspline { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.nw__cuspline--angle { stroke: var(--line-gold); stroke-width: 1.4; stroke-dasharray: none; }
+.nw__stem { stroke: var(--line-2); stroke-width: 0.8; }
+
+/* астрономические знаки берём из текстовых шрифтов, а не из эмодзи-набора */
+.natal-wheel text {
+  font-variant-emoji: text;
+  font-family: 'Segoe UI Symbol', 'Noto Sans Symbols 2', 'DejaVu Sans', var(--sans);
+}
+.nw__glyph { font-size: 17px; fill: var(--ink-3); }
+.nw__glyph--fire  { fill: #e0855f; }
+.nw__glyph--earth { fill: #8fae7e; }
+.nw__glyph--air   { fill: #86a8d8; }
+.nw__glyph--water { fill: #7fb6c4; }
+
+.nw__house { font-size: 11px; fill: var(--ink-4); font-weight: 600; }
+.nw__angle { font-size: 10px; fill: var(--gold); font-weight: 700; letter-spacing: 0.05em; }
+.nw__planet { font-size: 19px; fill: var(--gold-soft); }
+.nw__planet--retro { fill: var(--ember); }
+.nw__planet--transit { font-size: 15px; fill: var(--violet); }
+.nw__deg { font-size: 9px; fill: var(--ink-4); }
+
+.nw__asp { fill: none; opacity: 0.75; }
+.asp--hard { stroke: #d2705e; }
+.asp--soft { stroke: #6f9fd0; }
+.asp--neutral { stroke: var(--gold-deep); }
+
+.wheel-legend {
+  display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+  font-size: 0.78rem; color: var(--ink-3); margin-top: 4px;
+}
+.wheel-legend i {
+  display: inline-block; width: 18px; height: 2px; margin-right: 0.45em;
+  vertical-align: middle; border-radius: 2px;
+}
+.lg--hard { background: #d2705e; }
+.lg--soft { background: #6f9fd0; }
+.lg--neutral { background: var(--gold-deep); }
+
+/* блок разбора: вывод, а под ним правило, по которому он получен */
+.nb { padding: 12px 0; border-top: 1px solid var(--line); }
+.nb:first-child { border-top: 0; padding-top: 4px; }
+.nb__t { font-weight: 600; color: var(--gold-soft); margin: 0 0 0.4em; font-size: 0.97rem; }
+.nb__h {
+  font-family: var(--serif); font-size: 1.05rem; color: var(--ink);
+  margin: 18px 0 2px; padding-top: 14px; border-top: 1px solid var(--line-gold);
+}
+.nb__rule {
+  margin-top: 0.45em; font-size: 0.8rem; color: var(--ink-4);
+  padding-left: 0.8em; border-left: 2px solid var(--line-2);
+}
+.nb p { margin: 0 0 0.5em; }
+.nb p:last-child { margin-bottom: 0; }
+
+table.data .glyph { font-size: 1.05em; color: var(--gold-soft); }
+table.data .asp-hard { color: #d2705e; }
+table.data .asp-soft { color: #6f9fd0; }
+table.data .asp-neutral { color: var(--gold); }
+table.data tr.row--strong td { background: rgba(224, 180, 101, 0.045); }
+table.data tr.row--soft td { color: var(--ink-3); }

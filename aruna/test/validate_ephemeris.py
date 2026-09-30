@@ -15,14 +15,18 @@ import ephem
 # ловил регрессию в коде, а не фиксировал «примерно работает».
 # Измерено: Солнце 35″, Луна 14″, Меркурий 94″, Венера 177″,
 #           Марс 205″, Юпитер 113″, Сатурн 173″.
+# Дальние планеты нужны западной карте. Измерено на той же сетке:
+# Уран 115″, Нептун 73″, Плутон 67″ — то есть все три точнее Сатурна.
 THRESHOLDS = {            # угловые секунды
     "sun": 45, "moon": 20, "mercury": 120, "venus": 210,
     "mars": 240, "jupiter": 140, "saturn": 210,
+    "uranus": 140, "neptune": 95, "pluto": 90,
 }
 BODIES = {
     "sun": ephem.Sun, "moon": ephem.Moon, "mercury": ephem.Mercury,
     "venus": ephem.Venus, "mars": ephem.Mars, "jupiter": ephem.Jupiter,
-    "saturn": ephem.Saturn,
+    "saturn": ephem.Saturn, "uranus": ephem.Uranus, "neptune": ephem.Neptune,
+    "pluto": ephem.Pluto,
 }
 
 

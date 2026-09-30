@@ -167,6 +167,55 @@ const BIRTH = {
     ok('после всех ошибок сервер жив', alive.status === 200);
   }
 
+  /* ------------------------------------------- западная натальная карта */
+  group('Западная карта: пакет открывает шесть разборов');
+  {
+    const st = await (await post('/api/auth/start', {})).json();
+    api.confirmCode(st.code, 9090);
+    const { token } = await (await get('/api/auth/poll?code=' + st.code)).json();
+    const rep = (feature, system) =>
+      post('/api/report', { feature, birth: BIRTH, system }, token);
+
+    const locked = await rep('natal.aspects');
+    const lockedBody = await locked.json();
+    ok('без оплаты разбор не отдаётся', locked.status === 402);
+    ok('и сервер называет пакет, который его откроет', lockedBody.pack === 'natal.full');
+
+    await post('/api/purchase', { pack: 12 }, token);
+    const buy = await (await post('/api/unlock', { feature: 'natal.full' }, token)).json();
+    ok('пакет покупается', buy.ok === true);
+    ok('и списывает свою цену, а не сумму частей', buy.balance === 12 - 9, String(buy.balance));
+
+    const parts = ['natal.houses', 'natal.aspects', 'natal.dignities',
+                   'natal.shape', 'natal.transits', 'natal.progress'];
+    const results = [];
+    for (const f of parts) results.push(await rep(f));
+    ok('все шесть разборов открылись пакетом', results.every((r) => r.status === 200),
+      results.map((r) => r.status).join(','));
+
+    const asp = await (await rep('natal.aspects')).json();
+    ok('разбор аспектов содержит фигуры и подробности',
+      Array.isArray(asp.data.patterns) && asp.data.detail.length > 0);
+    const dig = await (await rep('natal.dignities')).json();
+    ok('достоинства считаются на сервере по семи классическим',
+      dig.data.rows.length === 7 && dig.data.almutenAsc.winner);
+    const tr = await (await rep('natal.transits')).json();
+    ok('транзиты приходят с датами', tr.data.events.every((e) => isFinite(e.jd)));
+
+    ok('чужой разбор пакет не открывает', (await rep('chart.yogas')).status === 402);
+
+    const pl = await (await rep('natal.houses', 'placidus')).json();
+    const wh = await (await rep('natal.houses', 'whole')).json();
+    const hOf = (b, k) => (b.data.filter((x) => x.key === k)[0] || {}).house;
+    ok('система домов берётся из запроса',
+      JSON.stringify(pl.data.map((x) => x.house.title)) !==
+      JSON.stringify(wh.data.map((x) => x.house.title)));
+    ok('и планеты при этом те же', pl.data.length === wh.data.length);
+
+    ok('сам пакет через /api/report не отдаётся',
+      (await rep('natal.full')).status === 400);
+  }
+
   api.store.close();
   await new Promise((r) => api.server.close(r));
   try { fs.unlinkSync(process.env.ARUNA_API_DATA); } catch (e) { /* уже нет */ }

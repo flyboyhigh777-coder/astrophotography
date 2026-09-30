@@ -51,6 +51,28 @@ const PAGES = [
     },
     filled: ['.str-list .str', '.yoga-list .yoga', '.win-list .win']
   },
+  {
+    url: '/natal.html', name: 'natal',
+    act: async page => {
+      // предыдущий сценарий включал подписку, а localStorage у контекста общий —
+      // без сброса замков на странице не будет и проверять станет нечего
+      await page.evaluate(() => window.ArunaAccess.reset());
+      await page.click('#exampleBtn');
+      await page.waitForTimeout(900);
+    },
+    filled: ['#wheelBox svg', '#posTable tbody tr', '#housesTable tbody tr',
+             '#aspTable tbody tr', '#openingBox .nb', '.locked']
+  },
+  {
+    url: '/natal.html', name: 'natal-unlocked',
+    act: async page => {
+      await page.evaluate(() => window.ArunaAccess.setPlan(window.ArunaAccess.PLAN.id));
+      await page.click('#exampleBtn');
+      await page.waitForTimeout(2200);
+    },
+    filled: ['#transitsReport table tbody tr', '#progressReport table tbody tr',
+             '#dignitiesReport .nb', '#shapeReport .nb']
+  },
   { url: '/pricing.html', name: 'pricing', filled: ['#featureTable tbody tr', '#packs .pack', '#planMonth'] },
   { url: '/legal.html', name: 'legal', filled: ['.panel p'] },
   {

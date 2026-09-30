@@ -33,6 +33,7 @@
     </button>
     <nav class="nav" id="nav" aria-label="Основная навигация">
       <a href="chart.html">Карта и день</a>
+      <a href="natal.html">Натальная карта</a>
       <a href="compat.html">Совместимость</a>
       <a href="muhurta.html">Выбор времени</a>
       <a href="rectify.html">Время рождения</a>
@@ -97,6 +98,15 @@
         <p class="tiny muted" style="margin-top:12px">
           Открытый разбор остаётся у вас навсегда и пересчитывается при любом
           изменении карты — доплачивать за это не нужно.
+        </p>
+        <p class="tiny muted" style="margin-top:8px">
+          <b>Полный разбор натальной карты</b> — 9 бидж, то есть от 990 до 1 340 ₽
+          в зависимости от пакета. Для сравнения, осенью 2026 года: живой астролог
+          берёт за разбор натальной карты от 5 000 ₽, письменный разбор у
+          начинающего — 2 000–2 500 ₽, разовые отчёты онлайн-сервисов — 500–2 000 ₽,
+          их подписки — 690–1 590 ₽ в месяц. Мы держимся ниже этого коридора
+          намеренно: считает всё равно машина, и брать за это как за живой час
+          было бы нечестно.
         </p>
         <p class="tiny muted" style="margin-top:8px">
           Исключение одно, и мы его не прячем: <b>развёрнутый ответ в диалоге</b>
@@ -208,8 +218,10 @@
 
   doc.getElementById('currencyAbout').textContent = Acc.CURRENCY.about;
 
-  var order = ['rectify.run', 'compat.full', 'chart.yogas', 'chart.varga',
-               'chart.forecast', 'chart.strength', 'muhurta.pick', 'dialog.deep'];
+  var order = ['natal.full', 'rectify.run', 'compat.full', 'chart.yogas', 'natal.aspects',
+               'chart.varga', 'chart.forecast', 'natal.transits', 'chart.strength',
+               'natal.houses', 'natal.dignities', 'natal.shape', 'natal.progress',
+               'muhurta.pick', 'dialog.deep'];
   // порядок — по убыванию цены: сначала то, ради чего сюда приходят
   doc.querySelector('#featureTable tbody').innerHTML = order.map(function (id) {
     var f = Acc.feature(id);
@@ -218,7 +230,9 @@
       '<td class="small">' + S.esc(f.about) + '</td>' +
       '<td><span class="seed">' + S.esc(Acc.seeds(f.price)) + '</span>' +
       (f.perUse ? '<br><span class="tiny muted">за каждый раз</span>'
-                : '<br><span class="tiny muted">навсегда</span>') + '</td></tr>';
+       : f.bundle ? '<br><span class="tiny muted">вместо ' +
+           Acc.seeds(Acc.bundleSeparate(id)) + ' по отдельности</span>'
+       : '<br><span class="tiny muted">навсегда</span>') + '</td></tr>';
   }).join('');
 
   doc.getElementById('packs').innerHTML = Acc.PACKS.map(function (p, i) {

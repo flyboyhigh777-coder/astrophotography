@@ -164,8 +164,49 @@ const REPORTS = {
   'compat.full': null,        // считается из двух карт, обрабатывается отдельно
   'muhurta.pick': null,
   'rectify.run': null,
-  'dialog.deep': null
+  'dialog.deep': null,        // считается в /api/talk, там же и оплата
+
+  /* --- западная натальная карта ---
+     Тем же способом, что и джйотиш: разбор считается здесь и уходит
+     только после проверки оплаты. Система домов приходит из запроса —
+     их семь, и выбор за человеком. */
+  'natal.houses': (chart) => J.NatalData.PLANET_ORDER
+    .filter((k) => chart.planets[k] && chart.planets[k].house)
+    .map((k) => ({
+      key: k,
+      sign: J.Interpret.planetInSign(chart, k),
+      house: J.Interpret.planetInHouse(chart, k)
+    })),
+  'natal.aspects': (chart) => {
+    const a = J.NatalAspects.findAll(chart);
+    return {
+      patterns: a.patterns,
+      detail: a.list.slice(0, 14).map((x) => J.Interpret.aspect(chart, x)),
+      counts: a.counts
+    };
+  },
+  'natal.dignities': (chart) => {
+    const d = J.Dignities.all(chart);
+    return {
+      rows: d.rows.map((r) => Object.assign({}, r, { line: J.Interpret.dignityLine(r) })),
+      almutenAsc: d.almutenAsc, peregrines: d.peregrines, note: d.note
+    };
+  },
+  'natal.shape': (chart) => ({
+    pattern: J.Shape.pattern(chart),
+    singletons: J.Shape.singletons(chart),
+    dispositor: J.Shape.finalDispositor(chart)
+  }),
+  'natal.transits': (chart) => J.Transits.ahead(chart, J.Tz.msToJd(Date.now()), 12),
+  'natal.progress': (chart) => ({
+    now: J.Transits.progressed(chart, J.Tz.msToJd(Date.now())),
+    nextMoonSign: J.Transits.nextProgressedMoonSign(chart, J.Tz.msToJd(Date.now()))
+  }),
+  'natal.full': null          // пакет: открывает шесть разборов выше, сам не считается
 };
+
+/** Разборы западной карты считаются из другой карты, чем джйотишные. */
+const NATAL = /^natal\./;
 
 /* ------------------------------------------------------------ маршруты */
 
@@ -424,13 +465,17 @@ async function api(req, res, url) {
     const feature = body.feature;
     const build = REPORTS[feature];
     if (!build) return json(res, 400, { error: 'этот разбор через API пока не отдаётся' });
-    const allowed = w.plan === ACCESS.PLAN.id || !!w.unlocked[feature];
-    if (!allowed) return json(res, 402, { error: 'разбор не оплачен' });
+    const parent = ACCESS.partOf ? ACCESS.partOf(feature) : null;
+    const allowed = w.plan === ACCESS.PLAN.id || !!w.unlocked[feature] ||
+                    (parent && !!w.unlocked[parent]);
+    if (!allowed) return json(res, 402, { error: 'разбор не оплачен', feature, pack: parent });
     if (!body.birth || !body.birth.date || !body.birth.place) {
       return json(res, 400, { error: 'нужны данные рождения' });
     }
     try {
-      const { chart } = J.chartFromBirth(body.birth);
+      const chart = NATAL.test(feature)
+        ? J.Natal.build(body.birth, body.system || 'placidus')
+        : J.chartFromBirth(body.birth).chart;
       return json(res, 200, { feature, data: build(chart) });
     } catch (e) {
       return json(res, 400, { error: 'не удалось посчитать: ' + e.message });

@@ -8,8 +8,10 @@
 # 3. bot.test.js          — весь диалог телеграм-бота без настоящего телеграма
 # 4. api.test.js          — сервер, вход через бота, оплата и выдача разборов
 # 5. dipa.test.js         — разговор: правила, блок фактов, инструменты, /api/talk
-# 6. validate_ephemeris   — сверка эфемериды с pyephem      (нужен: pip install ephem)
-# 7. browser_check.mjs    — страницы в настоящем Chromium    (нужен: playwright + порт 8099)
+# 6. natal.test.js        — западная карта: дома, аспекты, достоинства, транзиты
+# 7. validate_houses      — куспиды против Swiss Ephemeris  (нужен: pip install pyswisseph)
+# 8. validate_ephemeris   — сверка эфемериды с pyephem      (нужен: pip install ephem)
+# 9. browser_check.mjs    — страницы в настоящем Chromium    (нужен: playwright + порт 8099)
 #
 # Пункты 3 и 4 пропускаются, если их зависимостей нет: базовые проверки
 # должны проходить на голом node.
@@ -31,6 +33,22 @@ run "Лагна: формула против перебора"  node test/check_
 run "Телеграм-бот: весь диалог"       node test/bot.test.js
 run "Сервер: вход, оплата, разборы"   node test/api.test.js
 run "Дипа: разговор и оплата за раз"  node test/dipa.test.js
+run "Западная натальная карта"        node test/natal.test.js
+
+if python3 -c "import swisseph" 2>/dev/null; then
+  echo
+  echo "=============================================================="
+  echo "  Куспиды домов против Swiss Ephemeris"
+  echo "=============================================================="
+  if node test/dump_houses.mjs | python3 test/validate_houses.py; then
+    echo "  → ок"
+  else
+    echo "  → ПРОВАЛ"; fail=1
+  fi
+else
+  echo
+  echo "· сверка домов пропущена: нет pyswisseph (pip install pyswisseph)"
+fi
 
 if python3 -c "import ephem" 2>/dev/null; then
   echo

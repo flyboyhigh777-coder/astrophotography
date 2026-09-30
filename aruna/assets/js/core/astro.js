@@ -252,8 +252,52 @@
       M:  19.8950 + 0.0830853001 * d }; },
     saturn: function (d) { return { N: 113.6634 + 2.38980e-5 * d, i: 2.4886 - 1.081e-7 * d,
       w: 339.3939 + 2.97661e-5 * d, a: 9.55475, e: 0.055546 - 9.499e-9 * d,
-      M: 316.9670 + 0.0334442282 * d }; }
+      M: 316.9670 + 0.0334442282 * d }; },
+    /* Уран и Нептун нужны западной карте: в джйотише их нет (традиция знает
+       семь видимых грах и два узла), а натальная астрология без них не читается. */
+    uranus: function (d) { return { N:  74.0005 + 1.3978e-5 * d, i: 0.7733 + 1.9e-8 * d,
+      w:  96.6612 + 3.0565e-5 * d, a: 19.18171 - 1.55e-8 * d, e: 0.047318 + 7.45e-9 * d,
+      M: 142.5905 + 0.011725806 * d }; },
+    neptune: function (d) { return { N: 131.7806 + 3.0173e-5 * d, i: 1.7700 - 2.55e-7 * d,
+      w: 272.8461 - 6.027e-6 * d, a: 30.05826 + 3.313e-8 * d, e: 0.008606 + 2.15e-9 * d,
+      M: 260.2471 + 0.005995147 * d }; }
   };
+
+  /*
+   * Плутон кеплеровыми элементами не считается: его орбита слишком
+   * возмущена Нептуном, и оскулирующие элементы «уплывают» за десятилетия.
+   * Шлютер даёт для него отдельный ряд по двум аргументам — средним
+   * долготам Плутона и Нептуна. Ряд годится для 1800-2100 годов; за этими
+   * границами мы честно отказываемся считать, а не рисуем число.
+   */
+  var PLUTO_FROM = 2378497, PLUTO_TO = 2488070;      // 1800-01-01 и 2100-01-01
+
+  function plutoHelio(jde) {
+    var d = jde - 2451543.5;
+    var S = 50.03 + 0.033459652 * d;                 // средняя долгота Нептуна
+    var P = 238.95 + 0.003968789 * d;                // средняя долгота Плутона
+    var lon = 238.9508 + 0.00400703 * d
+      - 19.799 * sin(P)     + 19.848 * cos(P)
+      +  0.897 * sin(2 * P) -  4.956 * cos(2 * P)
+      +  0.610 * sin(3 * P) +  1.211 * cos(3 * P)
+      -  0.341 * sin(4 * P) -  0.190 * cos(4 * P)
+      +  0.128 * sin(5 * P) -  0.034 * cos(5 * P)
+      -  0.038 * sin(6 * P) +  0.031 * cos(6 * P)
+      +  0.020 * sin(S - P) -  0.010 * cos(S - P);
+    var lat = -3.9082
+      - 5.453 * sin(P)     - 14.975 * cos(P)
+      + 3.527 * sin(2 * P) +  1.673 * cos(2 * P)
+      - 1.051 * sin(3 * P) +  0.328 * cos(3 * P)
+      + 0.179 * sin(4 * P) -  0.292 * cos(4 * P)
+      + 0.019 * sin(5 * P) +  0.100 * cos(5 * P)
+      - 0.031 * sin(6 * P) -  0.026 * cos(6 * P)
+                           +  0.011 * cos(S - P);
+    var r = 40.72
+      + 6.68 * sin(P)     + 6.90 * cos(P)
+      - 1.18 * sin(2 * P) - 0.03 * cos(2 * P)
+      + 0.15 * sin(3 * P) - 0.14 * cos(3 * P);
+    return { lon: norm360(lon), lat: lat, r: r };
+  }
 
   /** Эксцентрическая аномалия из средней (итерации Ньютона), градусы. */
   function eccentricAnomaly(M, e) {
@@ -269,6 +313,7 @@
 
   /** Гелиоцентрические эклиптические координаты планеты: {lon, lat, r}. */
   function heliocentric(name, jde) {
+    if (name === 'pluto') return plutoHelio(jde);
     var d = jde - 2451543.5;
     var el = ELEMENTS[name](d);
     var E = eccentricAnomaly(el.M, el.e);
@@ -303,6 +348,12 @@
         lat += -0.020 * cos(2 * Mj - 4 * Ms - 2)
              +  0.018 * sin(2 * Mj - 6 * Ms - 49);
       }
+    }
+    if (name === 'uranus') {
+      var Mj2 = ELEMENTS.jupiter(d).M, Ms2 = ELEMENTS.saturn(d).M, Mu = ELEMENTS.uranus(d).M;
+      lon += 0.040 * sin(Ms2 - 2 * Mu + 6)
+           + 0.035 * sin(Ms2 - 3 * Mu + 33)
+           - 0.015 * sin(Mj2 - Mu + 20);
     }
     return { lon: norm360(lon), lat: lat, r: r };
   }
@@ -340,6 +391,26 @@
 
   var GRAHA_ORDER = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu'];
 
+  /* Западная натальная карта считает ещё три дальние планеты и Лилит.
+     Список отдельный: джйотиш перебирает GRAHA_ORDER и о них знать не должен. */
+  var OUTER_ORDER = ['uranus', 'neptune', 'pluto'];
+
+  /**
+   * Средняя Лилит — чёрная Луна, апогей лунной орбиты.
+   * Апогей = долгота перигея + 180°, а перигей = средняя долгота Луны минус
+   * её средняя аномалия (Меус, гл. 47). Это именно средняя Лилит: истинную
+   * (оскулирующую) считают иначе, и астрологи пользуются обеими — мы берём
+   * среднюю, потому что она однозначна и её ни с чем не спутать.
+   */
+  function lilith(jde) {
+    var T = (jde - 2451545.0) / 36525;
+    var L = 218.3164477 + 481267.88123421 * T - 0.0015786 * T * T +
+            T * T * T / 538841 - Math.pow(T, 4) / 65194000;
+    var M = 134.9633964 + 477198.8675055 * T + 0.0087414 * T * T +
+            T * T * T / 69699 - Math.pow(T, 4) / 14712000;
+    return norm360(L - M + 180);
+  }
+
   /**
    * Тропические видимые долготы всех девяти грах на JD(UT).
    * @returns {Object} ключ -> {lon, speed} (speed — °/сутки, <0 = ретроград)
@@ -360,7 +431,34 @@
     var nodeSpeed = (meanNode(jde + step / 2) - meanNode(jde - step / 2)) / step;
     out.rahu = { lon: meanNode(jde), speed: nodeSpeed };
     out.ketu = { lon: norm360(meanNode(jde) + 180), speed: nodeSpeed };
+    // Дальние планеты и Лилит: джйотиш их не читает, западная карта без них
+    // не собирается. Ключи добавляются к тем же девяти — перебор по
+    // GRAHA_ORDER их не заметит.
+    OUTER_ORDER.forEach(function (p) {
+      out[p] = withSpeed(function (t) { return planet(p, t); });
+    });
+    var lilSpeed = diff180(lilith(jde + step / 2), lilith(jde - step / 2)) / step;
+    out.lilith = { lon: lilith(jde), speed: lilSpeed };
     return out;
+  }
+
+  /** Считается ли Плутон на эту дату. Вне 1800-2100 ряд Шлютера неприменим. */
+  function plutoValid(jd) { return jd >= PLUTO_FROM && jd <= PLUTO_TO; }
+
+  /**
+   * Долгота одного тела на JD(UT). Нужна там, где ищут момент точного
+   * аспекта: перебирать ради одной планеты всю эфемериду — это сотни
+   * лишних вычислений Луны на каждый шаг, и поиск из мгновенного
+   * становится тридцатисекундным.
+   */
+  function bodyLongitude(key, jd) {
+    var jde = jdToJde(jd);
+    if (key === 'sun') return sun(jde).lon;
+    if (key === 'moon') return moon(jde).lon;
+    if (key === 'rahu' || key === 'node') return meanNode(jde);
+    if (key === 'ketu' || key === 'southnode') return norm360(meanNode(jde) + 180);
+    if (key === 'lilith') return lilith(jde);
+    return planet(key, jde).lon;
   }
 
   // ------------------------------------------------------- горизонт и лагна
@@ -385,6 +483,15 @@
     var phi = Math.max(-89.9, Math.min(89.9, lat));   // полюса: тангенс уходит в бесконечность
     var asc = norm360(atan2(cos(th), -(sin(th) * cos(eps) + tan(phi) * sin(eps))));
     var mc = norm360(atan2(sin(th), cos(th) * cos(eps)));
+    /*
+     * Формула даёт одну из двух точек пересечения эклиптики с горизонтом,
+     * и за полярным кругом это может оказаться заходящая, а не восходящая:
+     * лагна выходит ровно напротив истинной. Признак однозначен — асцендент
+     * всегда лежит впереди MC по ходу зодиака, не дальше чем на полкруга.
+     * Проверено против Swiss Ephemeris: у него эта разность не выходит за
+     * (0°, 180°) ни в одной из проверенных точек, включая Мурманск.
+     */
+    if (norm360(asc - mc) > 180) asc = norm360(asc + 180);
     return { asc: asc, mc: mc, lst: th, obliquity: eps };
   }
 
@@ -431,6 +538,8 @@
     gmst: gmst, nutation: nutation, meanObliquity: meanObliquity,
     sun: sun, moon: moon, meanNode: meanNode, heliocentric: heliocentric, planet: planet,
     tropicalPositions: tropicalPositions, GRAHA_ORDER: GRAHA_ORDER,
+    OUTER_ORDER: OUTER_ORDER, lilith: lilith, plutoValid: plutoValid,
+    bodyLongitude: bodyLongitude,
     localSiderealTime: localSiderealTime, ascendantMc: ascendantMc,
     sunAltitude: sunAltitude, sunriseSunset: sunriseSunset
   };

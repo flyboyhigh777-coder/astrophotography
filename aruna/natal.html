@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Натальная карта: западная астрология с проверенным расчётом — Аруна</title>
+<meta name="description" content="Натальная карта в тропическом зодиаке: семь систем домов на выбор, аспекты с орбисами, классические достоинства, транзиты и прогрессии. Куспиды сверены со Swiss Ephemeris.">
+<meta name="theme-color" content="#080b16">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23080b16'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23e0b465' stroke-width='1.5'/%3E%3Ccircle cx='16' cy='5' r='2' fill='%23f4dda9'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..600;1,400&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/charts.css">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+
+<header class="header" id="header">
+  <div class="wrap header__inner">
+    <a class="logo" href="index.html" aria-label="Аруна — на главную">
+      <svg class="logo__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.2" fill="none" stroke="rgba(224,180,101,.35)"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="var(--gold)" stroke-width="1.3"/>
+        <circle cx="16" cy="4.2" r="2.1" fill="var(--gold-soft)"/>
+      </svg>
+      <span class="logo__text">Аруна</span>
+    </a>
+    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="nav" aria-label="Меню">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h16M3 11h16M3 16h16"/></svg>
+    </button>
+    <nav class="nav" id="nav" aria-label="Основная навигация">
+      <a href="chart.html">Карта и день</a>
+      <a href="natal.html" aria-current="page">Натальная карта</a>
+      <a href="compat.html">Совместимость</a>
+      <a href="dialog.html">Диалог</a>
+      <a href="muhurta.html">Выбор времени</a>
+      <a href="rectify.html">Время рождения</a>
+      <a href="pricing.html">Тарифы</a>
+      <a href="index.html#faq">Вопросы</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="page-head">
+    <div class="wrap">
+      <p class="eyebrow">Западная астрология</p>
+      <h1>Натальная карта, в которой видно, откуда взялось каждое число</h1>
+      <p class="lede">
+        Тропический зодиак, семь систем домов на выбор, аспекты с орбисами,
+        классические достоинства планет. Куспиды домов сверены со Swiss Ephemeris —
+        отраслевым эталоном — и совпадают с точностью до половины угловой секунды.
+      </p>
+      <p class="tiny muted" style="margin-top:0.9em;max-width:60ch">
+        Это другая астрология, не та, что в разделе «Карта и день». Там джйотиш и
+        сидерический зодиак, здесь западная традиция и тропический. Разница около 24° —
+        знак Солнца почти у всех выходит разный, и это не ошибка ни одной из систем.
+        <a href="#difference">Чем они отличаются</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="section--tight">
+    <div class="wrap layout">
+      <aside class="layout__aside">
+        <form class="panel form-card" id="birthPanel" novalidate>
+          <div class="panel__head" style="margin-bottom:4px">
+            <h2 style="font-size:1.12rem">Данные рождения</h2>
+          </div>
+          <div id="birthForm"></div>
+          <div class="field">
+            <label for="houseSystem">Система домов</label>
+            <select class="input" id="houseSystem"></select>
+            <p class="tiny muted" id="systemAbout" style="margin-top:0.45em"></p>
+          </div>
+          <p class="form-error" id="formError" hidden></p>
+          <button class="btn btn--gold btn--block" type="submit">Построить карту</button>
+          <button class="btn btn--quiet btn--sm" type="button" id="exampleBtn">Показать на примере</button>
+          <noscript>
+            <p class="form-note">Расчёт идёт в браузере, поэтому здесь нужен включённый JavaScript.</p>
+          </noscript>
+        </form>
+
+        <button class="btn btn--ghost btn--block" type="button" id="printBtn" hidden
+                onclick="window.print()">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+               stroke-width="1.5" aria-hidden="true">
+            <path d="M4.5 6V2.5h7V6M4.5 11.5h7V14h-7zM3 6h10a1 1 0 0 1 1 1v3.5H2V7a1 1 0 0 1 1-1z"/>
+          </svg>
+          Сохранить в PDF
+        </button>
+
+        <div class="panel" id="walletPanel">
+          <h3 style="font-size:1rem;margin-bottom:0.7em">Ваш баланс</h3>
+          <div id="walletBox"></div>
+          <div id="authBox" style="margin-top:12px"></div>
+        </div>
+
+        <div class="panel">
+          <h3 style="font-size:1rem;margin-bottom:0.5em">Как считается</h3>
+          <p class="tiny muted" style="margin-bottom:0.7em">
+            Тропический зодиак. Положения планет видимые — с нутацией и годичной
+            аберрацией. Уран, Нептун и Плутон считаются, Хирона нет: его орбита
+            требует иной точности, а рисовать правдоподобное число мы не станем.
+          </p>
+          <p class="tiny muted">
+            Дома: Плацидус, Кох, Региомонтан, Кампанус, Порфирий, равнодомная,
+            целознаковая. За полярным кругом четыре первые системы не определены —
+            там мы честно отказываемся считать и говорим почему.
+          </p>
+        </div>
+      </aside>
+
+      <div class="layout__main" id="results" hidden>
+        <div class="panel">
+          <div class="panel__head">
+            <h2>Карта</h2>
+            <p class="tiny muted" id="chartMeta">—</p>
+          </div>
+          <div id="wheelBox" class="natal-wheel-box"></div>
+          <div class="wheel-legend" id="wheelLegend"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Три опоры</h2></div>
+          <div id="openingBox"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head">
+            <h2>Положения</h2>
+            <p class="tiny muted">знак, градус, дом, скорость</p>
+          </div>
+          <div class="table-wrap"><table class="data" id="posTable"></table></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head">
+            <h2>Дома</h2>
+            <p class="tiny muted" id="housesMeta">—</p>
+          </div>
+          <div class="table-wrap"><table class="data" id="housesTable"></table></div>
+          <div id="housesReport"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head">
+            <h2>Аспекты</h2>
+            <p class="tiny muted" id="aspectsMeta">—</p>
+          </div>
+          <div class="table-wrap"><table class="data" id="aspTable"></table></div>
+          <div id="aspectsReport"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Достоинства планет</h2></div>
+          <div id="dignitiesReport"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head"><h2>Рисунок карты</h2></div>
+          <div id="shapeReport"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head">
+            <h2>Транзиты на год</h2>
+            <p class="tiny muted">медленные планеты к точкам вашей карты</p>
+          </div>
+          <div id="transitsReport"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel__head">
+            <h2>Прогрессии</h2>
+            <p class="tiny muted">вторичные: день после рождения за год жизни</p>
+          </div>
+          <div id="progressReport"></div>
+        </div>
+
+        <div class="panel" id="difference">
+          <div class="panel__head"><h2>Чем это отличается от джйотиша</h2></div>
+          <p>
+            Обе системы считают одно и то же небо и расходятся в точке отсчёта.
+            Западная традиция ведёт зодиак от весеннего равноденствия — знак Овна
+            начинается там, где Солнце пересекает экватор. Джйотиш ведёт его от
+            неподвижных звёзд. Из-за прецессии эти две точки расходятся примерно на
+            градус за 72 года, и сегодня разница — около 24°.
+          </p>
+          <p>
+            Поэтому Солнце, стоящее в западной карте в конце Тельца, в джйотише
+            окажется в начале Овна. Ни одна из систем не ошибается: они отвечают на
+            разные вопросы. Западная смотрит на времена года и на отношение к
+            Солнцу, джйотиш — на положение среди звёзд.
+          </p>
+          <p class="tiny muted">
+            На этом сайте есть обе, и считает их один и тот же проверенный код:
+            эфемерида общая, расходятся только аянамша и способ деления домов.
+            <a href="chart.html">Джйотиш-карта</a> · <a href="pricing.html">тарифы</a>
+          </p>
+        </div>
+      </div>
+
+      <div class="layout__main" id="empty">
+        <div class="empty-state">
+          <p>Заполните данные рождения слева — и карта появится здесь.</p>
+          <p class="tiny muted" style="margin-top:0.8em">
+            Расчёт идёт в вашем браузере: дата и место рождения никуда не отправляются.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer__bottom" style="margin-top:0;border-top:0">
+      <span>© <span id="year">2026</span> Аруна</span>
+      <span class="muted">Сидерический зодиак · аянамша Лахири · расчёт в браузере</span>
+      <a href="index.html">На главную</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/core/astro.js"></script>
+<script src="assets/js/core/access.js"></script>
+<script src="assets/js/core/tz.js"></script>
+<script src="assets/js/data/jyotish-data.js"></script>
+<script src="assets/js/data/cities.js"></script>
+<script src="assets/js/data/natal-data.js"></script>
+<script src="assets/js/natal/houses.js"></script>
+<script src="assets/js/natal/chart.js"></script>
+<script src="assets/js/natal/aspects.js"></script>
+<script src="assets/js/natal/dignities.js"></script>
+<script src="assets/js/natal/shape.js"></script>
+<script src="assets/js/natal/transits.js"></script>
+<script src="assets/js/natal/interpret.js"></script>
+<script src="assets/js/natal/wheel.js"></script>
+<script src="assets/js/ui/common.js"></script>
+<script src="assets/js/ui/birthform.js"></script>
+<script src="assets/js/ui/paywall.js"></script>
+<script src="assets/js/ui/auth.js"></script>
+<script src="assets/js/ui/natal-page.js"></script>
+</body>
+</html>

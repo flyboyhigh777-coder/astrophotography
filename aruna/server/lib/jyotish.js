@@ -34,7 +34,16 @@ const FILES = [
   'jyotish/varga.js',
   'jyotish/rectify.js',
   'jyotish/sarvashtaka.js',
-  'jyotish/talk.js'
+  'jyotish/talk.js',
+  // западная натальная карта — отдельный продукт на том же ядре
+  'data/natal-data.js',
+  'natal/houses.js',
+  'natal/chart.js',
+  'natal/aspects.js',
+  'natal/dignities.js',
+  'natal/shape.js',
+  'natal/transits.js',
+  'natal/interpret.js'
 ];
 
 const sandbox = {
@@ -99,5 +108,13 @@ module.exports = {
   Rectify: sandbox.ArunaRectify,
   Sarvashtaka: sandbox.ArunaSarvashtaka,
   Talk: sandbox.ArunaTalk,
+  NatalData: sandbox.ArunaNatalData,
+  Houses: sandbox.ArunaHouses,
+  Natal: sandbox.ArunaNatal,
+  NatalAspects: sandbox.ArunaAspects,
+  Dignities: sandbox.ArunaDignities,
+  Shape: sandbox.ArunaShape,
+  Transits: sandbox.ArunaTransits,
+  Interpret: sandbox.ArunaInterpret,
   chartFromBirth
 };

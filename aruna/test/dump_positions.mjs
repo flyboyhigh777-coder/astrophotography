@@ -12,7 +12,8 @@ const rows = [];
 for (let jd = A.julianDay(1930, 1, 1, 0); jd < A.julianDay(2050, 1, 1, 0); jd += 37.3) {
   const p = A.tropicalPositions(jd);
   const rec = { jd };
-  for (const k of ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu']) {
+  for (const k of ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu',
+                   'uranus', 'neptune', 'pluto']) {
     rec[k] = p[k].lon;
   }
   rows.push(rec);

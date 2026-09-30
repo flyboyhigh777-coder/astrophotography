@@ -227,7 +227,7 @@ if (!HAS_SDK) {
 } else {
   const trail = [];
   const tools = Dipa.buildTools(f, trail);
-  ok('восемь инструментов', tools.length === 8, String(tools.length));
+  ok('девять инструментов', tools.length === 9, String(tools.length));
   ok('у каждого есть описание и схема',
     tools.every((t) => t.name && t.description && t.input_schema));
   const results = {};
@@ -240,7 +240,8 @@ if (!HAS_SDK) {
     ['sav_table', {}],
     ['varga_position', { varga: 'D9' }],
     ['muhurta_today', { task: 'travel' }],
-    ['find_verse', { themes: ['letting-go'] }]
+    ['find_verse', { themes: ['letting-go'] }],
+    ['western_chart', {}]
   ]) {
     const t = tools.filter((x) => x.name === name)[0];
     results[name + JSON.stringify(input)] = await t.run(input);
@@ -269,7 +270,10 @@ if (!HAS_SDK) {
   ok('стих отдаётся только нашим переводом',
     /Перевод \(наш\)/.test(results['find_verse{"themes":["letting-go"]}']) &&
     /Цитируй только этот перевод/.test(results['find_verse{"themes":["letting-go"]}']));
-  ok('каждый вызов попал в след', trail.length === 9, String(trail.length));
+  ok('западная карта отдаётся с оговоркой про разные зодиаки',
+    /24|аянамш|сидерическ/.test(results['western_chart{}']) &&
+    /асцендент/.test(results['western_chart{}']));
+  ok('каждый вызов попал в след', trail.length === 10, String(trail.length));
 
   group('Инструменты не роняют разговор на мусоре');
   const bad = [
