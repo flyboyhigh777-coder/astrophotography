@@ -92,8 +92,15 @@ select.input option { color: #14182b; background: #eef1f8; }
 .check input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* выпадающий список мест */
+/*
+ * Список шире своего поля. «Место рождения» занимает половину строки, и
+ * подсказка по его ширине обрезала страну: «Ташкент  Узбекис…». Растём
+ * влево от правого края на всю строку — ровно две колонки и зазор между
+ * ними; поверх поля времени, но это всплывающий слой, ему можно.
+ */
 .place-list {
-  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  position: absolute; top: calc(100% + 4px); left: auto; right: 0; z-index: 20;
+  min-width: calc(200% + 12px);
   background: #0e1223; border: 1px solid var(--line-2); border-radius: 12px;
   box-shadow: var(--shadow); max-height: 260px; overflow-y: auto; padding: 5px;
   display: none;
@@ -105,10 +112,32 @@ select.input option { color: #14182b; background: #eef1f8; }
   background: transparent; border: 0; border-radius: 8px; padding: 0.55em 0.65em; cursor: pointer;
 }
 .place-list button:hover, .place-list button.is-active { background: var(--surface-3); }
-.place-list button span { color: var(--ink-4); font-size: 0.82rem; }
+.place-list__city { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-list__country {
+  color: var(--ink-4); font-size: 0.82rem;
+  white-space: nowrap; flex: none;      /* страну не режем: за ней и пришли */
+}
 .place-list__empty { padding: 0.6em 0.7em; color: var(--ink-4); font-size: 0.88rem; }
 
 .form-note { font-size: 0.82rem; color: var(--ink-4); line-height: 1.5; }
+
+/*
+ * Строка про часовой пояс меняется по ходу заполнения, а стоит прямо
+ * над кнопкой расчёта. Если дать ей расти, кнопка уезжает вниз в тот
+ * момент, когда по ней уже нажимают, — и попадание уходит в соседний
+ * элемент. Поэтому место под неё отведено заранее, по самой длинной
+ * зоне на узком экране.
+ */
+.form-note--zone { min-height: 4.5em; }
+@media (max-width: 359px) { .form-note--zone { min-height: 6em; } }
+
+/*
+ * То же и с описанием системы домов: оно меняется на каждый выбор из
+ * списка и стоит над той же кнопкой. Сдвиг тут меньше, на строку, но
+ * дёргается вся панель — отводим место и под него.
+ */
+#systemAbout { min-height: 6em; }
+
 .form-error {
   font-size: 0.87rem; color: #ffb4a2;
   background: rgba(224, 112, 79, 0.10); border: 1px solid rgba(224, 112, 79, 0.32);

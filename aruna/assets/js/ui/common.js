@@ -26,6 +26,46 @@
       return root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches;
     },
 
+    /*
+     * Место как его читают: «Ташкент, Узбекистан». Одного названия мало —
+     * городов-тёзок много, а человеку важно видеть, что расчёт пошёл
+     * именно по его стране. У координат, введённых вручную, страны нет.
+     */
+    placeLabel: function (place) {
+      if (!place) return '';
+      return place.country ? place.name + ', ' + place.country : (place.name || '');
+    },
+
+    /*
+     * Показать посчитанное.
+     *
+     * На широком экране форма слева, результат справа — нажал кнопку и
+     * сразу видишь карту. На узком они встают друг под друга, и карта
+     * рождается ниже сгиба: человек жмёт «Построить карту», ничего не
+     * происходит, кнопка кажется сломанной. Поэтому после расчёта
+     * подводим страницу к результату — но только если его и правда не
+     * видно, иначе экран будет дёргаться на каждый пересчёт.
+     *
+     * Отступ сверху — под липкую шапку, чтобы заголовок не уезжал под неё.
+     */
+    reveal: function (node) {
+      if (!node || !root.requestAnimationFrame) return;
+      root.requestAnimationFrame(function () {
+        var box = node.getBoundingClientRect();
+        if (!box.height) return;
+        var head = S.q('.header');
+        var top = head ? head.getBoundingClientRect().height : 0;
+        var seen = box.top >= top && box.top < root.innerHeight * 0.6;
+        if (seen) return;
+        var y = box.top + (root.pageYOffset || doc.documentElement.scrollTop) - top - 12;
+        try {
+          root.scrollTo({ top: y, behavior: S.reducedMotion() ? 'auto' : 'smooth' });
+        } catch (e) {
+          root.scrollTo(0, y);          // старые движки без объектной формы
+        }
+      });
+    },
+
     /* ------------------------------------------------------ дата и время */
     dateRu: function (utcMs, tz, opts) {
       var o = { day: 'numeric', month: 'long', year: 'numeric' };

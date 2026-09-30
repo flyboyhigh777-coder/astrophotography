@@ -71,7 +71,7 @@
       '<div class="chart-box"><div class="chart-box__canvas" id="chartCanvas"></div>' +
         '<p class="tiny muted" id="chartNote" style="text-align:center;max-width:44ch"></p>' +
         '<p class="tiny muted" style="text-align:center">' +
-          S.esc(birth.place.name) + ' · ' +
+          S.esc(S.placeLabel(birth.place)) + ' · ' +
           S.esc(S.dateRu(state.utcMs, birth.place.tz).replace(/\s*г\.$/, '')) + ', ' +
           S.esc(birth.timeKnown ? S.timeRu(state.utcMs, birth.place.tz) : '12:00 (время неизвестно)') +
           ' · ' + S.esc(offsetLabel) + ' · аянамша ' + S.esc(ch.ayanamsaDms) +
@@ -221,7 +221,7 @@
     return { html:
       '<div class="panel"><div class="panel__head"><h2>Небо дня</h2>' +
         '<p class="tiny muted">' + S.esc(S.dateRu(now, tz).replace(/\s*г\.$/, '')) + ' · ' +
-        S.esc(birth.place.name) + '</p></div>' +
+        S.esc(S.placeLabel(birth.place)) + '</p></div>' +
         '<dl class="kv">' + rows.map(function (r) {
           return '<dt>' + S.esc(r[0]) + '</dt><dd>' + r[1] + '</dd>';
         }).join('') + '</dl>' + muh +
@@ -389,9 +389,7 @@
       err.hidden = true;
       try {
         render(form.getValue());
-        if (root.innerWidth < 940) {
-          doc.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        S.reveal(doc.getElementById('results'));
       } catch (ex) {
         err.textContent = 'Не удалось построить карту: ' + ex.message;
         err.hidden = false;

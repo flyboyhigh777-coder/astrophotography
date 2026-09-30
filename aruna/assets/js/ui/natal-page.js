@@ -356,7 +356,7 @@
 
     el('chartMeta').textContent =
       S.dateRu(chart.utcMs, chart.tz).replace(/\s*г\.$/, '') + ', ' +
-      S.timeRu(chart.utcMs, chart.tz) + ' · ' + birth.place.name + ' · ' +
+      S.timeRu(chart.utcMs, chart.tz) + ' · ' + S.placeLabel(birth.place) + ' · ' +
       (chart.byDay ? 'дневная карта' : 'ночная карта') + ' · ' + chart.houses.system.title;
 
     renderWheel(chart, asp);
@@ -389,7 +389,9 @@
     sel.addEventListener('change', function () {
       about();
       try { root.localStorage.setItem(SKEY, sel.value); } catch (e) { /* инкогнито */ }
-      if (state) draw(state.birth);
+      // Смена системы видна только в самой карте, а на телефоне она под
+      // формой: без этого кажется, что выбор ни на что не влияет.
+      if (state) { draw(state.birth); S.reveal(el('results')); }
     });
   }
 
@@ -401,12 +403,22 @@
 
     el('birthPanel').addEventListener('submit', function (e) {
       e.preventDefault();
-      var v = form.validate();
+      // validate() возвращает текст ошибки или null — не объект.
+      var problem = form.validate();
       var err = el('formError');
-      if (!v.ok) { err.textContent = v.error; err.hidden = false; return; }
+      if (problem) { err.textContent = problem; err.hidden = false; return; }
       err.hidden = true;
-      S.saveBirth(v.value);
-      draw(v.value);
+      var birth = form.getValue();
+      try {
+        S.saveBirth(birth);
+        draw(birth);
+      } catch (ex) {
+        err.textContent = 'Не удалось построить карту: ' + ex.message;
+        err.hidden = false;
+        if (root.console) root.console.error(ex);
+        return;
+      }
+      S.reveal(el('results'));
     });
     var tt = el('transitToggle');
     if (tt) {
@@ -422,6 +434,7 @@
       form.setValue(EXAMPLE);
       S.saveBirth(EXAMPLE);
       draw(EXAMPLE);
+      S.reveal(el('results'));
     });
 
     renderWallet();

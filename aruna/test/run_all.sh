@@ -14,6 +14,7 @@
 # 9. browser_check.mjs    — страницы в настоящем Chromium    (нужен: playwright + порт 8099)
 #10. engines_check.mjs   — те же страницы в WebKit и Firefox (нужны: playwright install webkit firefox)
 #11. touch_check.mjs     — цели под палец и шрифт полей на телефоне
+#12. submit_check.mjs    — нажатие самих кнопок расчёта: форма, город, сдвиг
 #
 # Пункты 3 и 4 пропускаются, если их зависимостей нет: базовые проверки
 # должны проходить на голом node.
@@ -73,6 +74,7 @@ if command -v npx >/dev/null 2>&1 && [ -d "$(npm root -g)/playwright" ]; then
   sleep 2
   run "Страницы в Chromium" node test/browser_check.mjs
   run "Цели под палец на телефоне" node test/touch_check.mjs
+  run "Кнопки расчёта под нажатием" node test/submit_check.mjs
   # WebKit — движок Safari и всех браузеров на айфоне; ставится отдельно
   if [ -d "$(ls -d "${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"/webkit-* 2>/dev/null | head -1)" ]; then
     run "Страницы в WebKit и Firefox" node test/engines_check.mjs

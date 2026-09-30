@@ -74,7 +74,7 @@
         '<div class="field" style="margin-top:10px"><label for="' + id + 'tz">Часовая зона</label>' +
           '<select class="input" id="' + id + 'tz">' + tzOptions(place ? place.tz : 'Europe/Moscow') + '</select></div>' +
       '</details>' +
-      '<p class="form-note" id="' + id + 'hint"></p>';
+      '<p class="form-note form-note--zone" id="' + id + 'hint"></p>';
 
     var el = {
       date: doc.getElementById(id + 'date'),
@@ -104,7 +104,9 @@
       } else {
         el.list.innerHTML = items.map(function (c, i) {
           return '<button type="button" role="option" data-i="' + i + '">' +
-                 S.esc(c.name) + '<span>' + S.esc(c.region) + '</span></button>';
+                 '<span class="place-list__city">' + S.esc(c.name) + '</span>' +
+                 '<span class="place-list__country">' + S.esc(c.country || c.region) +
+                 '</span></button>';
         }).join('');
       }
       el.list.classList.add('is-open');
@@ -122,17 +124,52 @@
       if (o.onChange) o.onChange();
     }
 
-    /** Подсказка: какое смещение получится на выбранную дату. */
+    /*
+     * Подсказка: какое смещение получится на выбранную дату.
+     *
+     * Пока города нет, здесь стоит не пустота, а обещание. Пустая
+     * строка схлопывалась, а когда город находился — разворачивалась
+     * на три строки и толкала кнопку «Построить карту» вниз ровно в
+     * тот момент, когда к ней тянулся палец. Человек попадал по
+     * галочке «время неизвестно», а кнопка казалась мёртвой. Поэтому
+     * текст здесь есть всегда, а высота закреплена в стилях.
+     */
+    var HINT_IDLE = 'Часовой пояс покажем, как выберете город: со всеми ' +
+                    'историческими сдвигами.';
+
     function updateHint() {
       var v = getValue();
-      if (!v) { el.hint.textContent = ''; return; }
+      if (!v) { el.hint.textContent = HINT_IDLE; return; }
       try {
         var d = v.date.split('-').map(Number), t = v.time.split(':').map(Number);
         var ms = Tz.zonedToUtcMs(d[0], d[1], d[2], t[0], t[1], v.place.tz);
         el.hint.textContent = v.place.tz + ' · на эту дату ' +
           Tz.offsetLabel(Tz.offsetMinutes(ms, v.place.tz)) +
-          ' (историческое смещение, с учётом декретного и летнего времени)';
-      } catch (e) { el.hint.textContent = ''; }
+          ' — с декретным и летним временем.';
+      } catch (e) { el.hint.textContent = HINT_IDLE; }
+    }
+
+    updateHint();
+
+    /*
+     * Что делать, если человек набрал город и сразу нажал «Построить
+     * карту», не ткнув в подсказку. На телефоне это обычное дело:
+     * список закрывает клавиатура, и до него просто не добираются.
+     * Раньше выбор считался несделанным и форма отвечала «выберите
+     * город из списка» — кнопка выглядела сломанной. Теперь набранное
+     * имя засчитывается само, если оно совпало с городом целиком или
+     * подошёл ровно один.
+     */
+    function resolveTyped() {
+      if (place) return place;
+      var q = el.place.value.trim();
+      if (q.length < 2) return null;
+      var hits = Cities.search(q, 9);
+      var key = q.toLowerCase().replace(/ё/g, 'е');
+      for (var i = 0; i < hits.length; i++) {
+        if (hits[i].name.toLowerCase().replace(/ё/g, 'е') === key) return hits[i];
+      }
+      return hits.length === 1 ? hits[0] : null;
     }
 
     el.place.addEventListener('input', function () {
@@ -140,6 +177,19 @@
       place = null;
       if (q.length < 2) { closeList(); return; }
       openList(Cities.search(q, 8));
+    });
+    /*
+     * Ушли из поля — договариваем за человека, что он имел в виду. Но не
+     * тогда, когда уход вызван тычком в саму подсказку: там уже идёт
+     * выбор, и закрывать список под пальцем нельзя — нажатие не дойдёт.
+     */
+    var picking = false;
+    el.list.addEventListener('pointerdown', function () { picking = true; });
+    el.place.addEventListener('blur', function () {
+      if (picking) { picking = false; return; }
+      var c = resolveTyped();
+      if (c) choose(c);
+      else closeList();
     });
     el.place.addEventListener('keydown', function (e) {
       if (!el.list.classList.contains('is-open') || !matches.length) return;
@@ -169,11 +219,36 @@
       n.addEventListener('change', function () { updateHint(); if (o.onChange) o.onChange(); });
     });
 
+    /*
+     * Календарь и часы — по тапу в любое место поля.
+     *
+     * Сам по себе type=date открывает системный выбор только с крошечной
+     * иконки справа; в остальное поле палец попадает между «днём» и
+     * «месяцем» и правит дату рождения по сегменту — на телефоне это
+     * мучение. Поэтому на сенсорном экране тап в любое место открывает
+     * системный выбор целиком.
+     *
+     * Только на сенсорном: мышью дату чаще набирают с клавиатуры, и
+     * всплывающий календарь там мешал бы. showPicker() есть в Chrome,
+     * Яндексе, Edge и Opera; в Safari и Firefox его нет — там поле
+     * ведёт себя как прежде, поэтому вызов и обёрнут.
+     */
+    var coarse = root.matchMedia && root.matchMedia('(pointer: coarse)').matches;
+    if (coarse) {
+      [el.date, el.time].forEach(function (n) {
+        if (!n.showPicker) return;
+        n.addEventListener('click', function () {
+          if (n.disabled || n.readOnly) return;
+          try { n.showPicker(); } catch (e) { /* жест не тот — откроется сам */ }
+        });
+      });
+    }
+
     /** Собранное значение или null, если данных не хватает. */
     function getValue() {
       var date = el.date.value;
       if (!date) return null;
-      var p = place;
+      var p = place || resolveTyped();
       if (!p) {
         var lat = parseFloat(el.lat.value), lon = parseFloat(el.lon.value);
         if (isNaN(lat) || isNaN(lon)) return null;

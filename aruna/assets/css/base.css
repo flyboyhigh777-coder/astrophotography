@@ -47,6 +47,15 @@
   --shadow-gold: 0 0 40px -12px rgba(224, 180, 101, 0.35);
 }
 
+/*
+ * Тема тёмная — и об этом надо сказать браузеру, а не только раскрасить
+ * элементы. От color-scheme зависит то, что рисует система, а не мы:
+ * полосы прокрутки, выделение текста, стандартные элементы форм. Без
+ * него на светлой системной теме прокрутка остаётся белой полосой
+ * поперёк ночного неба.
+ */
+:root { color-scheme: dark; }
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html {
@@ -238,6 +247,26 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
   transition: border-color 0.3s ease, background 0.3s ease;
 }
 .header.is-stuck { border-bottom-color: var(--line); background: rgba(6, 8, 17, 0.9); }
+
+/*
+ * Матовое стекло держится на backdrop-filter. Там, где его нет (Firefox
+ * до 103, отключённая прозрачность в настройках системы), полупрозрачный
+ * фон остаётся полупрозрачным — и текст страницы читается сквозь шапку.
+ * В таком случае честнее отказаться от стекла и залить шапку целиком.
+ */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .header,
+  .header.is-stuck { background: #070a14; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .header,
+  .header.is-stuck {
+    background: #070a14;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
 .header__inner {
   display: flex; align-items: center; gap: clamp(14px, 3vw, 34px);
   min-height: 68px;

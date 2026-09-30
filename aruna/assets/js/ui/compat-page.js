@@ -193,7 +193,7 @@
       err.hidden = true;
       try {
         render({ a: formA.getValue(), b: formB.getValue() });
-        doc.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        S.reveal(doc.getElementById('results'));
       } catch (ex) {
         err.textContent = 'Не удалось сопоставить карты: ' + ex.message;
         err.hidden = false;
@@ -204,6 +204,7 @@
     doc.getElementById('exampleBtn').addEventListener('click', function () {
       formA.setValue(EXAMPLE.a); formB.setValue(EXAMPLE.b);
       render(EXAMPLE);
+      S.reveal(doc.getElementById('results'));
     });
 
     if (saved && saved.a && saved.b) { try { render(saved); } catch (e) { /* пустое состояние */ } }
