@@ -45,10 +45,22 @@ jobs:
       # Протокол ELM327/OBD-II, разбор PID, коды ошибок, VIN, итоги поездки -
       # всё это чистый Kotlin и проверяется без эмулятора.
       - name: Core unit tests
-        run: ./gradlew :core:test
+        shell: bash
+        run: |
+          ./gradlew :core:test 2>&1 | tee core-test.log || {
+            echo "=== ОШИБКИ КОМПИЛЯЦИИ (:core) ==="
+            grep -E "^e: |^w: " core-test.log | head -40
+            exit 1
+          }
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+        shell: bash
+        run: |
+          ./gradlew :app:assembleDebug 2>&1 | tee build.log || {
+            echo "=== ОШИБКИ КОМПИЛЯЦИИ (:app) ==="
+            grep -E "^e: " build.log | head -60
+            exit 1
+          }
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -60,7 +72,13 @@ jobs:
       # Настоящее приложение (Activity + Compose + ViewModel) под Robolectric:
       # проходит все экраны в демо-режиме и снимает скриншоты.
       - name: App UI flow test
-        run: ./gradlew :app:testDebugUnitTest
+        shell: bash
+        run: |
+          ./gradlew :app:testDebugUnitTest 2>&1 | tee ui-test.log || {
+            echo "=== ОШИБКИ КОМПИЛЯЦИИ ТЕСТА ==="
+            grep -E "^e: " ui-test.log | head -40
+            exit 1
+          }
 
       # Стабильная ссылка на скачивание вместо GitHub Actions Artifacts: у
       # артефактов подписанный URL с коротким сроком жизни, который мобильные
