@@ -1,0 +1,103 @@
+name: OBD Scanner CI
+
+# Фильтр по путям: в репозитории два независимых приложения
+# (android-project - AstroStacker, obd2-project - OBD Сканер), и собирать оба на
+# каждый пуш незачем. Сам файл воркфлоу тоже в фильтре - иначе правку сборки
+# нельзя было бы проверить.
+on:
+  push:
+    # Любая ветка, а не только main: приложение собирается и проходит тесты до
+    # того, как попадёт в main, и APK ветки можно скачать из артефактов сборки.
+    branches: ['**']
+    paths:
+      - 'obd2-project/**'
+      - '.github/workflows/obd2.yml'
+  pull_request:
+    paths:
+      - 'obd2-project/**'
+      - '.github/workflows/obd2.yml'
+  workflow_dispatch:
+
+# Пуш в ветку с открытым pull request запускает сборку дважды - вторая отменяет
+# первую, вместо того чтобы занимать раннер той же работой.
+concurrency:
+  group: obd2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: obd2-project
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Протокол ELM327/OBD-II, разбор PID, коды ошибок, VIN, итоги поездки -
+      # всё это чистый Kotlin и проверяется без эмулятора.
+      - name: Core unit tests
+        run: ./gradlew :core:test --stacktrace
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ObdScanner-debug-apk
+          path: obd2-project/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      # Настоящее приложение (Activity + Compose + ViewModel) под Robolectric:
+      # проходит все экраны в демо-режиме и снимает скриншоты.
+      - name: App UI flow test
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      # Стабильная ссылка на скачивание вместо GitHub Actions Artifacts: у
+      # артефактов подписанный URL с коротким сроком жизни, который мобильные
+      # браузеры скачивают через раз. Релиз с фиксированным тегом даёт обычную
+      # прямую ссылку, перезаписывается при каждой сборке в main.
+      - name: Publish debug APK to a stable GitHub Release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete obd2-debug-latest --yes --cleanup-tag || true
+          gh release create obd2-debug-latest app/build/outputs/apk/debug/app-debug.apk \
+            --repo "${{ github.repository }}" \
+            --title "OBD Сканер - debug APK (последняя сборка)" \
+            --notes "Автосборка с main, коммит ${GITHUB_SHA}. Ссылка на этот релиз не меняется - обновляется при каждом пуше." \
+            --target "${GITHUB_SHA}"
+
+      - name: Publish screenshots to ci-screenshots-obd2 branch
+        if: always() && github.ref == 'refs/heads/main'
+        working-directory: obd2-project/app/build
+        run: |
+          [ -d outputs/roborazzi ] || { echo "no screenshots"; exit 0; }
+          mkdir -p publish && cp outputs/roborazzi/*.png publish/ 2>/dev/null || true
+          [ -d reports/tests ] && cp -r reports/tests publish/test-report || true
+          cd publish
+          echo "Screenshots for ${GITHUB_SHA}" > README.md
+          git init -q -b ci-screenshots-obd2
+          git add -A
+          git -c user.name="ci" -c user.email="ci@users.noreply.github.com" commit -qm "OBD screenshots for ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-screenshots-obd2
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: obd-test-reports
+          path: |
+            obd2-project/core/build/reports/tests/
+            obd2-project/app/build/reports/tests/
+          if-no-files-found: ignore
