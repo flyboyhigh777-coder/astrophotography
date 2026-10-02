@@ -45,10 +45,10 @@ jobs:
       # Протокол ELM327/OBD-II, разбор PID, коды ошибок, VIN, итоги поездки -
       # всё это чистый Kotlin и проверяется без эмулятора.
       - name: Core unit tests
-        run: ./gradlew :core:test --stacktrace
+        run: ./gradlew :core:test
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -60,12 +60,31 @@ jobs:
       # Настоящее приложение (Activity + Compose + ViewModel) под Robolectric:
       # проходит все экраны в демо-режиме и снимает скриншоты.
       - name: App UI flow test
-        run: ./gradlew :app:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest
 
       # Стабильная ссылка на скачивание вместо GitHub Actions Artifacts: у
       # артефактов подписанный URL с коротким сроком жизни, который мобильные
       # браузеры скачивают через раз. Релиз с фиксированным тегом даёт обычную
       # прямую ссылку, перезаписывается при каждой сборке в main.
+      # Выжимка из XML-отчётов: что за тест упал и с каким сообщением. Без неё в
+      # журнале остаётся только стек Gradle, по которому причину не найти.
+      - name: Show failed tests
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import glob, xml.etree.ElementTree as ET
+          found = False
+          for path in sorted(glob.glob('*/build/test-results/**/*.xml', recursive=True)):
+              for case in ET.parse(path).getroot().iter('testcase'):
+                  for bad in list(case.iter('failure')) + list(case.iter('error')):
+                      found = True
+                      print('=== УПАЛ:', case.get('classname'), '>', case.get('name'))
+                      print((bad.get('message') or '')[:2000])
+                      print((bad.text or '')[:6000])
+          if not found:
+              print('XML-отчётов с падениями нет - значит упала компиляция, смотрите строки "e:" выше.')
+          PY
+
       - name: Publish debug APK to a stable GitHub Release
         if: github.ref == 'refs/heads/main'
         env:
