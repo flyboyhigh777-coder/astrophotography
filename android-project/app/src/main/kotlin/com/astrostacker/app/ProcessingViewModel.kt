@@ -1,14 +1,19 @@
 package com.astrostacker.app
 
 import android.app.Application
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.astrostacker.app.data.ExportFormat
 import com.astrostacker.app.data.ExportRepository
 import com.astrostacker.app.data.ImageDecoding
 import com.astrostacker.app.data.MemoryBudget
+import com.astrostacker.app.data.ShareCardRenderer
+import com.astrostacker.app.data.TrailExifSummary
+import com.astrostacker.app.data.summarizeTrailExif
 import com.astrostacker.core.CropRect
 import com.astrostacker.core.EditParams
 import com.astrostacker.core.FrameCalibration
@@ -18,6 +23,7 @@ import com.astrostacker.core.Pipeline
 import com.astrostacker.core.PipelineConfig
 import com.astrostacker.core.ProgressUpdate
 import com.astrostacker.core.Rgb16Image
+import com.astrostacker.core.SnrEstimator
 import com.astrostacker.core.Stage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /** Рекомендуемый максимум кадров в одной серии - см. подсказку на экране выбора. */
 const val RECOMMENDED_MAX_FRAMES = 30
@@ -62,7 +69,13 @@ sealed interface ScreenState {
         val calibrationUsed: List<CalibrationKind> = emptyList(),
         /** Из скольких кадров сложена земля и были ли это отдельные снимки земли. */
         val groundFramesUsed: Int = 0,
-        val groundFromSeparateFrames: Boolean = false
+        val groundFromSeparateFrames: Boolean = false,
+        /** EXIF-сводка по кадрам, реально вошедшим в стек (см. [FrameOutcome.accepted]) - для карточки сессии. */
+        val exif: TrailExifSummary,
+        /** Грубая оценка SNR по стеку неба (см. [SnrEstimator]) - для карточки сессии. */
+        val snr: SnrEstimator.Estimate,
+        /** Название объекта/места для карточки - вводит пользователь, пусто по умолчанию. */
+        val cardTitle: String = ""
     ) : ScreenState
 
     /** Экран "Повернуть и обрезать" поверх результата - см. [EditorUiState]. */
@@ -179,12 +192,22 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
                     previewSkyOnly = fullSkyOnly!!.downscale(PREVIEW_MAX_SIDE)
                 }
                 val preview = withContext(Dispatchers.Default) { renderPreview(freezeGround = true, edit = EditParams()) }
+                // Сводка EXIF только по кадрам, реально вошедшим в стек (не отклонённым при
+                // совмещении) - для карточки сессии (см. ResultScreen "Поделиться").
+                val acceptedExif = withContext(Dispatchers.IO) {
+                    result.frameOutcomes.filter { it.accepted }.mapNotNull { outcome ->
+                        picking.lightFrames.getOrNull(outcome.index)?.let { ImageDecoding.readFrameExif(context, it) }
+                    }
+                }
+                val snr = withContext(Dispatchers.Default) { SnrEstimator.estimate(fullSkyOnly!!) }
                 _screenState.value = ScreenState.Result(
                     frameOutcomes = result.frameOutcomes,
                     previewBitmap = preview,
                     calibrationUsed = used,
                     groundFramesUsed = result.groundFramesUsed,
-                    groundFromSeparateFrames = result.groundFromSeparateFrames
+                    groundFromSeparateFrames = result.groundFromSeparateFrames,
+                    exif = summarizeTrailExif(acceptedExif),
+                    snr = snr
                 )
             } catch (e: CancellationException) {
                 throw e // отмену корутины нельзя "проглатывать" - см. cancelProcessing()
@@ -223,6 +246,42 @@ class ProcessingViewModel(application: Application) : AndroidViewModel(applicati
     fun setExportFormat(format: ExportFormat) {
         val current = _screenState.value as? ScreenState.Result ?: return
         _screenState.value = current.copy(exportFormat = format, saveState = SaveState.Idle)
+    }
+
+    fun setCardTitle(title: String) {
+        val current = _screenState.value as? ScreenState.Result ?: return
+        _screenState.value = current.copy(cardTitle = title)
+    }
+
+    /**
+     * Рендерит карточку статистики сессии поверх превью-снимка (см.
+     * [ShareCardRenderer]) и открывает системный диалог "Поделиться" -
+     * тот же приём FileProvider, что и для кадра с камеры (см.
+     * `CameraCapture.kt`), плюс `FLAG_ACTIVITY_NEW_TASK`, т.к. запускаем
+     * Intent из `Application`, а не из `Activity`.
+     */
+    fun shareCard() {
+        val current = _screenState.value as? ScreenState.Result ?: return
+        viewModelScope.launch {
+            try {
+                val context = getApplication<Application>()
+                val uri = withContext(Dispatchers.IO) {
+                    val card = ShareCardRenderer.render(current.cardTitle, current.exif, current.snr, current.frameOutcomes.count { it.accepted }, current.previewBitmap)
+                    val dir = File(context.cacheDir, "share").apply { mkdirs() }
+                    val file = File(dir, "astro_card_${System.currentTimeMillis()}.png")
+                    file.outputStream().use { card.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                }
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (e: Exception) {
+                // Шаринг - необязательное действие поверх уже готового результата, не ломаем экран результата из-за него.
+            }
+        }
     }
 
     // ---------- Повернуть и обрезать ----------

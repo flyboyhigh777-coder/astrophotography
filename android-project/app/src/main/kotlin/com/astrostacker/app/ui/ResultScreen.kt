@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +32,8 @@ import com.astrostacker.app.R
 import com.astrostacker.app.SaveState
 import com.astrostacker.app.ScreenState
 import com.astrostacker.app.data.ExportFormat
+import com.astrostacker.app.data.formatExposureDuration
+import com.astrostacker.app.ui.theme.GlassCard
 import com.astrostacker.app.ui.theme.GradientTopBar
 
 /**
@@ -45,7 +48,9 @@ fun ResultScreen(
     onEdit: () -> Unit,
     onFormatChanged: (ExportFormat) -> Unit,
     onSave: () -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    onCardTitleChanged: (String) -> Unit,
+    onShareCard: () -> Unit
 ) {
     val acceptedCount = state.frameOutcomes.count { it.accepted }
     val totalCount = state.frameOutcomes.size
@@ -100,6 +105,36 @@ fun ResultScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            GlassCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.result_card_heading), style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(
+                        value = state.cardTitle,
+                        onValueChange = onCardTitleChanged,
+                        label = { Text(stringResource(R.string.result_card_title_label)) },
+                        placeholder = { Text(stringResource(R.string.result_card_title_placeholder)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        CardStat(
+                            stringResource(R.string.result_card_stat_exposure),
+                            formatExposureDuration(state.exif.totalExposureSeconds)
+                        )
+                        CardStat(stringResource(R.string.result_card_stat_frames), "$acceptedCount/${state.exif.frameCount}")
+                        CardStat(stringResource(R.string.result_card_stat_snr), String.format("%.1f", state.snr.snr))
+                    }
+                    Text(
+                        stringResource(R.string.result_card_snr_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(onClick = onShareCard, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.result_card_share_button))
+                    }
+                }
             }
 
             OutlinedButton(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
@@ -196,4 +231,12 @@ internal fun formatLabel(format: ExportFormat): String = when (format) {
     ExportFormat.TIFF16 -> stringResource(R.string.format_tiff16)
     ExportFormat.PNG -> "PNG"
     ExportFormat.JPEG -> "JPEG"
+}
+
+@Composable
+private fun CardStat(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.tertiary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

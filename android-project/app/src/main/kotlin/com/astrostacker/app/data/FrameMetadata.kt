@@ -42,6 +42,18 @@ data class TrailExifSummary(
     val hasLocation: Boolean get() = latitude != null && longitude != null
 }
 
+/** [seconds] -> "47m 32s" / "2h 15m" - без привязки к локали (общий формат для карточки "Треков" и шаринга "Астро"). */
+fun formatExposureDuration(seconds: Double): String {
+    if (seconds <= 0) return "0s"
+    val total = seconds.roundToLong()
+    val h = total / 3600; val m = (total % 3600) / 60; val s = total % 60
+    return when {
+        h > 0 -> "${h}h ${m}m ${s}s"
+        m > 0 -> "${m}m ${s}s"
+        else -> "${s}s"
+    }
+}
+
 fun summarizeTrailExif(frames: List<FrameExif>): TrailExifSummary {
     val isos = frames.mapNotNull { it.iso }
     val exposures = frames.mapNotNull { it.exposureSeconds }
