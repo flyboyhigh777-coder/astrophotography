@@ -26,6 +26,14 @@
     <string name="result_frames_rejected_note">Часть кадров не удалось совместить (мало общих звёзд) — они не попали в склейку.</string>
     <string name="result_freeze_ground_label">Земля отдельным стеком</string>
     <string name="result_freeze_ground_hint">Горы, деревья и другие объекты складываются отдельно (они неподвижны), небо — из всех кадров, совмещённых по звёздам.</string>
+    <string name="result_card_heading">Карточка сессии</string>
+    <string name="result_card_title_label">Название</string>
+    <string name="result_card_title_placeholder">Например: Туманность Ориона</string>
+    <string name="result_card_stat_exposure">Выдержка</string>
+    <string name="result_card_stat_frames">Кадры</string>
+    <string name="result_card_stat_snr">SNR</string>
+    <string name="result_card_snr_hint">SNR — грубая оценка шума по итоговому снимку, не замер по кадрам. На карточке также показан теоретический график роста SNR (~√N кадров), а не точные значения на каждом шаге.</string>
+    <string name="result_card_share_button">Поделиться</string>
     <string name="result_save_success">Сохранено в Pictures/AstroStacker (TIFF — в Download/AstroStacker, если галерея не принимает этот формат)</string>
     <string name="result_save_error">Не удалось сохранить файл</string>
     <string name="result_start_over">Начать заново</string>

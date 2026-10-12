@@ -66,13 +66,13 @@ import com.astrostacker.app.TrailScreen
 import com.astrostacker.app.TrailStage
 import com.astrostacker.app.data.ExportFormat
 import com.astrostacker.app.data.TrailExifSummary
+import com.astrostacker.app.data.formatExposureDuration
 import com.astrostacker.core.StackingOrder
 import com.astrostacker.core.StarTrailConfig
 import com.astrostacker.core.TrailStyle
 import com.astrostacker.app.ui.theme.GlassCard
 import com.astrostacker.app.ui.theme.GradientTopBar
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /** Вкладка "Звёздные треки": переключает экраны по [TrailScreen]. */
 @Composable
@@ -512,7 +512,7 @@ private fun TrailInfoScreen(state: TrailScreen.Result, onClose: () -> Unit) {
                 else -> stringResource(R.string.trail_info_iso_range, exif.isoMin, exif.isoMax)
             }
             InfoRow(stringResource(R.string.trail_info_iso, iso))
-            InfoRow(stringResource(R.string.trail_info_exposure, formatDuration(exif.totalExposureSeconds)))
+            InfoRow(stringResource(R.string.trail_info_exposure, formatExposureDuration(exif.totalExposureSeconds)))
 
             if (exif.hasLocation) {
                 InfoRow(stringResource(R.string.trail_info_location, exif.latitude!!, exif.longitude!!))
@@ -536,17 +536,6 @@ private fun InfoRow(text: String) {
     Text(text, style = MaterialTheme.typography.bodyMedium)
 }
 
-/** [seconds] -> "47 мин 32 с" / "2 ч 15 мин" - без привязки к локали (используется и в RU, и в EN строках как готовое число+единицы через отдельный ресурс не заводим, форматируем здесь). */
-private fun formatDuration(seconds: Double): String {
-    if (seconds <= 0) return "0 s"
-    val total = seconds.roundToInt()
-    val h = total / 3600; val m = (total % 3600) / 60; val s = total % 60
-    return when {
-        h > 0 -> "${h}h ${m}m ${s}s"
-        m > 0 -> "${m}m ${s}s"
-        else -> "${s}s"
-    }
-}
 
 // ---------- Значки верхней панели (см. StarIcon/PanoramaIcon в MainActivity.kt - тот же приём) ----------
 
