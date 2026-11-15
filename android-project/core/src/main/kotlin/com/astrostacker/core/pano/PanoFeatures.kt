@@ -1,6 +1,7 @@
 package com.astrostacker.core.pano
 
 import com.astrostacker.core.ColorSpace
+import com.astrostacker.core.FloatImage
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
@@ -35,6 +36,22 @@ class PanoImage(val width: Int, val height: Int, val argb: IntArray, val focal35
     }
 
     private fun lin(v: Int) = ColorSpace.srgbByteToLinear(v)
+
+    companion object {
+        /** Из линейного [FloatImage] пайплайна - для поиска особых точек там, где исходник уже не 8-битный Bitmap (см. HdrAligner). */
+        fun fromFloatImage(image: FloatImage): PanoImage {
+            val argb = IntArray(image.width * image.height)
+            for (i in argb.indices) {
+                val r = to8(ColorSpace.linearToSrgb(image.r[i]))
+                val g = to8(ColorSpace.linearToSrgb(image.g[i]))
+                val b = to8(ColorSpace.linearToSrgb(image.b[i]))
+                argb[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+            }
+            return PanoImage(image.width, image.height, argb)
+        }
+
+        private fun to8(v: Float): Int = (v * 255f + 0.5f).toInt().coerceIn(0, 255)
+    }
 }
 
 /** Простое одноканальное изображение для поиска особых точек. */

@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.astrostacker.app.ui.AstroStackerRoot
+import com.astrostacker.app.ui.HdrRoot
 import com.astrostacker.app.ui.PanoramaRoot
 import com.astrostacker.app.ui.TrailRoot
 import com.astrostacker.app.ui.theme.AstroStackerTheme
@@ -43,16 +44,17 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Единственная Activity. Три независимые вкладки внизу: "Астро" (стекинг
- * ночного неба, звёзды точками), "Панорама" (склейка панорам) и "Треки"
- * (звёздные треки - кадры НЕ совмещаются, вращение неба само рисует дуги) -
- * у каждой свой ViewModel, поэтому переключение вкладок не теряет состояние
- * остальных.
+ * Единственная Activity. Четыре независимые вкладки внизу: "Астро" (стекинг
+ * ночного неба, звёзды точками), "Панорама" (склейка панорам), "HDR" (слияние
+ * разных выдержек одной сцены) и "Треки" (звёздные треки - кадры НЕ
+ * совмещаются, вращение неба само рисует дуги) - у каждой свой ViewModel,
+ * поэтому переключение вкладок не теряет состояние остальных.
  */
 class MainActivity : ComponentActivity() {
 
     private val astroViewModel: ProcessingViewModel by viewModels()
     private val panoramaViewModel: PanoramaViewModel by viewModels()
+    private val hdrViewModel: HdrViewModel by viewModels()
     private val trailViewModel: StarTrailViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +80,7 @@ class MainActivity : ComponentActivity() {
                             when (tab) {
                                 0 -> AstroStackerRoot(astroViewModel)
                                 1 -> PanoramaRoot(panoramaViewModel)
+                                2 -> HdrRoot(hdrViewModel)
                                 else -> TrailRoot(trailViewModel)
                             }
                         }
@@ -102,6 +105,13 @@ class MainActivity : ComponentActivity() {
                             NavigationBarItem(
                                 selected = tab == 2,
                                 onClick = { tab = 2 },
+                                icon = { HdrIcon() },
+                                label = { Text(stringResource(R.string.tab_hdr)) },
+                                colors = navColors()
+                            )
+                            NavigationBarItem(
+                                selected = tab == 3,
+                                onClick = { tab = 3 },
                                 icon = { TrailIcon() },
                                 label = { Text(stringResource(R.string.tab_trails)) },
                                 colors = navColors()
@@ -154,6 +164,22 @@ private fun PanoramaIcon() {
             lineTo(w * 0.68f, h * 0.45f); lineTo(w * 0.88f, h * 0.68f)
         }
         drawPath(m, color, style = Stroke(stroke))
+    }
+}
+
+@Composable
+private fun HdrIcon() {
+    val color = LocalContentColor.current
+    Canvas(Modifier.size(24.dp)) {
+        val stroke = 2.dp.toPx()
+        val cx = size.width / 2; val cy = size.height / 2
+        val r = size.minDimension * 0.4f
+        val bounds = androidx.compose.ui.geometry.Rect(cx - r, cy - r, cx + r, cy + r)
+        // Контур - весь динамический диапазон кадра; левая половина залита
+        // ("света", проработаны слиянием), правая - только контур ("тени",
+        // вытянуты из той же серии) - слияние светов и теней в одном круге.
+        drawArc(color, startAngle = 90f, sweepAngle = 180f, useCenter = true, topLeft = bounds.topLeft, size = bounds.size)
+        drawArc(color, startAngle = 0f, sweepAngle = 360f, useCenter = false, topLeft = bounds.topLeft, size = bounds.size, style = Stroke(stroke))
     }
 }
 
