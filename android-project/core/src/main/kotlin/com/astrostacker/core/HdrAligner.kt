@@ -2,7 +2,8 @@ package com.astrostacker.core
 
 import com.astrostacker.core.pano.PanoFeatures
 import com.astrostacker.core.pano.PanoImage
-import kotlin.math.sqrt
+import kotlin.math.abs
+import kotlin.math.hypot
 
 /** [reason] - для экрана результата ("ok"/почему кадр не вошёл в слияние). */
 data class HdrFrameOutcome(
@@ -15,6 +16,14 @@ data class HdrFrameOutcome(
 
 data class HdrAlignResult(
     val referenceIndex: Int,
+    /**
+     * Позиция опорного кадра ВНУТРИ [frames] - НЕ совпадает с [referenceIndex],
+     * если более ранние по порядку кадры были отброшены (неправдоподобное
+     * совмещение). Нужна [ExposureFusion] для обнаружения "призраков"
+     * ([GhostDetector]) - там опорный кадр ищется по позиции в уже
+     * отфильтрованном списке, а не по исходному индексу.
+     */
+    val referenceFrameIndex: Int,
     /** Только успешно совмещённые кадры - уже готовы для [FrameWarp]/[ExposureFusion]. */
     val frames: List<StackFrame>,
     val outcomes: List<HdrFrameOutcome>
@@ -36,9 +45,33 @@ object HdrAligner {
 
     data class Config(
         val features: PanoFeatures.Config = PanoFeatures.Config(),
-        val ransac: RansacConfig = RansacConfig(inlierThresholdPx = 3.0, minInliers = 8),
-        val affineEscalationRmsThresholdPx: Double = 2.0,
-        val affineEscalationMinInliers: Int = 12
+        // Строже, чем у панорамы (0.75 по умолчанию): повторяющаяся текстура
+        // (листва, трава, кирпич) даёт много похожих, но не идентичных
+        // патчей - при мягком тесте Лоу ложное сопоставление запросто
+        // проходит, т.к. второй по близости кандидат почти не хуже первого.
+        val matchRatio: Double = 0.65,
+        val ransac: RansacConfig = RansacConfig(inlierThresholdPx = 3.0, minInliers = 10),
+        /**
+         * Кадры одной HDR-серии снимаются без намеренного зума - если
+         * найденное преобразование подразумевает масштаб заметно не 1.0, оно
+         * почти наверняка ложное (типичный симптом повторяющейся текстуры,
+         * сбившей сопоставление точек), а не отражает реальное движение
+         * камеры. Такой кадр лучше исключить, чем получить из него полосы
+         * "размазанного" края на развороте (см. FrameWarp).
+         */
+        val maxScaleDeviation: Double = 0.08,
+        /** Сдвиг (доля диагонали кадра) выше этого считается неправдоподобным для одной серии. */
+        val maxTranslationFraction: Double = 0.25,
+        /**
+         * Камера между кадрами одной HDR-серии не переворачивается - только
+         * небольшой поворот от дрожания руки. Без этой проверки преобразование
+         * с масштабом ~1 и небольшим сдвигом, но поворотом хоть на 90°,
+         * формально проходило бы проверку выше (там масштаб и сдвиг, не
+         * поворот) - а при развороте такого кадра в общую систему координат
+         * содержимое растягивается вдоль одной оси и сжимается вдоль другой,
+         * давая на выходе полосы-"разрывы", а не просто смазанный край.
+         */
+        val maxRotationDegrees: Double = 10.0
     )
 
     /**
@@ -65,15 +98,17 @@ object HdrAligner {
 
         val outcomes = ArrayList<HdrFrameOutcome>()
         val stackFrames = ArrayList<StackFrame>()
+        var referenceFrameIndex = -1
 
         for (i in images.indices) {
             if (i == refIdx) {
+                referenceFrameIndex = stackFrames.size
                 stackFrames.add(StackFrame(images[i], SimilarityTransform.IDENTITY))
                 outcomes.add(HdrFrameOutcome(i, true, "опорный кадр"))
                 continue
             }
 
-            val candidatePairs = PanoFeatures.match(features[i], referenceFeatures)
+            val candidatePairs = PanoFeatures.match(features[i], referenceFeatures, config.matchRatio)
             val matches = candidatePairs.map { (targetIdx, refFeatureIdx) ->
                 val target = features[i][targetIdx]
                 val ref = referenceFeatures[refFeatureIdx]
@@ -86,21 +121,43 @@ object HdrAligner {
                 continue
             }
 
-            var transform: Transform2D = ransac.transform
-            var rms = ransac.rmsResidual
-            if (rms > config.affineEscalationRmsThresholdPx && ransac.inlierIndices.size >= config.affineEscalationMinInliers) {
-                val inlierMatches = ransac.inlierIndices.map { matches[it] }
-                val affine = AffineFit.fitLeastSquares(inlierMatches)
-                if (affine != null) {
-                    val affineRms = rmsResidual(affine, inlierMatches)
-                    if (affineRms < rms) { transform = affine; rms = affineRms }
-                }
+            val transform = ransac.transform
+            // БЕЗ эскалации до аффинного (в отличие от FrameRegistrator/звёзд):
+            // аффинное преобразование - 6 независимых степеней свободы, оно
+            // может описать не только небольшой перекос, но и ОТРАЖЕНИЕ/обмен
+            // осей x<->y, если МНК на зашумлённых (от повторяющейся текстуры)
+            // соответствиях случайно сойдётся к такой матрице - при этом каждый
+            // столбец может иметь длину ~1 (пройдёт проверку масштаба), но
+            // геометрически это уже не "лёгкий перекос", а каша. У HDR нет
+            // той практической необходимости в аффинном, что есть у панорамы/
+            // звёзд (кадры с одной точки, без перспективных искажений) - риск
+            // от лишних степеней свободы перевешивает пользу.
+            if (!isPlausible(transform, images[i].width, images[i].height, config)) {
+                outcomes.add(HdrFrameOutcome(i, false, "совмещение получилось неправдоподобным (похоже, повторяющаяся текстура сбила сопоставление точек)", ransac.inlierIndices.size, ransac.rmsResidual))
+                continue
             }
             stackFrames.add(StackFrame(images[i], transform))
-            outcomes.add(HdrFrameOutcome(i, true, "ok", ransac.inlierIndices.size, rms))
+            outcomes.add(HdrFrameOutcome(i, true, "ok", ransac.inlierIndices.size, ransac.rmsResidual))
         }
 
-        return HdrAlignResult(refIdx, stackFrames, outcomes)
+        return HdrAlignResult(refIdx, referenceFrameIndex, stackFrames, outcomes)
+    }
+
+    /**
+     * Проверка здравого смысла поверх геометрической подгонки: RANSAC+МНК
+     * математически корректны и для ложного, но внутренне согласованного
+     * набора соответствий (именно так ведёт себя периодическая текстура -
+     * листва, трава, кладка - согласующиеся, но неверные совпадения). Кадры
+     * одной HDR-серии снимаются с одной точки без намеренного зума/поворота,
+     * поэтому неправдоподобный масштаб или огромный сдвиг - надёжный сигнал,
+     * что геометрия найдена неверно, а не то, что камера и правда так
+     * сдвинулась.
+     */
+    private fun isPlausible(transform: SimilarityTransform, width: Int, height: Int, config: Config): Boolean {
+        val diag = hypot(width.toDouble(), height.toDouble())
+        return abs(transform.scale - 1.0) <= config.maxScaleDeviation &&
+            hypot(transform.tx, transform.ty) <= config.maxTranslationFraction * diag &&
+            abs(Math.toDegrees(transform.rotationRad)) <= config.maxRotationDegrees
     }
 
     private fun meanLuminance(image: FloatImage): Double {
@@ -108,16 +165,5 @@ object HdrAligner {
         var sum = 0.0
         for (v in lum.data) sum += v
         return sum / lum.data.size
-    }
-
-    private fun rmsResidual(transform: Transform2D, matches: List<PointMatch>): Double {
-        if (matches.isEmpty()) return 0.0
-        var sumSq = 0.0
-        for (m in matches) {
-            val p = transform.apply(m.from)
-            val dx = p.x - m.to.x; val dy = p.y - m.to.y
-            sumSq += dx * dx + dy * dy
-        }
-        return sqrt(sumSq / matches.size)
     }
 }

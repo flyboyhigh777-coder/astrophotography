@@ -77,66 +77,74 @@ class HdrViewModel(application: Application) : AndroidViewModel(application) {
         val total = picking.photos.size
         if (total < 2) return
         job = viewModelScope.launch {
-            _state.value = HdrScreen.Processing(HdrProgress(HdrStage.LOAD, 0, total))
-            try {
-                val context = getApplication<Application>()
-                // Помимо N кадров разом, слияние экспозиций держит на кадр ещё пирамиды
-                // Гаусса/Лапласа (контраст/насыщенность/экспонированность + сами кадры
-                // канал за каналом) - по памяти это сопоставимо ещё с одним полноразмерным
-                // кадром на каждый входной (взято с запасом сверху, не измерено
-                // профайлером - см. MemoryBudget.kt).
-                val budget = MemoryBudget.compute(frameCount = total, extraFullFrames = total * 2)
-                val images = ArrayList<FloatImage>()
-                for ((i, uri) in picking.photos.withIndex()) {
-                    val decoded = withContext(Dispatchers.IO) { ImageDecoding.decodeFrame(context, uri, budget.maxTotalPixels) }
-                    val image = decoded.image
-                    if (image == null) {
-                        _state.value = picking.copy(error = "не удалось прочитать фото: ${decoded.displayName}")
+            // Первая попытка - с потолком заведомо выше любого реального фото (родное
+            // разрешение фото остаётся как есть): не угадываем заранее "безопасный"
+            // потолок по объёму памяти - урезаем только если реально не хватило
+            // (OutOfMemoryError), и то постепенно (вдвое за раз - конкретное число,
+            // а не Long.MAX_VALUE, иначе первый же откат с него ничего не уменьшит,
+            // если фото и так меньше последующего потолка).
+            var maxTotalPixels = UNLIMITED_PIXELS
+            while (true) {
+                try {
+                    runPipeline(picking, total, maxTotalPixels)
+                    return@launch
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: OutOfMemoryError) {
+                    release()
+                    val next = maxTotalPixels / 2
+                    if (next < MemoryBudget.MIN_TOTAL_PIXELS) {
+                        _state.value = picking.copy(error = "не хватило памяти даже на уменьшенном разрешении - выберите меньше фото")
                         return@launch
                     }
-                    images.add(image)
-                    _state.value = HdrScreen.Processing(HdrProgress(HdrStage.LOAD, i + 1, total))
-                }
-                // Кадры одной HDR-серии снимаются с одной и той же точки без смены
-                // кадрирования - разный размер означает, что выбраны кадры из разных
-                // серий или с цифровым зумом между ними, выравнивание тут бессмысленно.
-                val width = images[0].width; val height = images[0].height
-                if (images.any { it.width != width || it.height != height }) {
-                    _state.value = picking.copy(error = "фото разного размера - нужна серия с одной точки без смены зума")
+                    maxTotalPixels = next
+                } catch (e: Exception) {
+                    release()
+                    _state.value = picking.copy(error = e.message ?: e.toString())
                     return@launch
                 }
-
-                val aligned = withContext(Dispatchers.Default) {
-                    HdrAligner.align(images) { current, featuresTotal ->
-                        _state.value = HdrScreen.Processing(HdrProgress(HdrStage.FEATURES, current, featuresTotal))
-                    }
-                }
-                if (aligned.frames.size < 2) {
-                    _state.value = picking.copy(error = "не удалось совместить кадры - нужна серия со штатива без смещения кадра")
-                    return@launch
-                }
-                _state.value = HdrScreen.Processing(HdrProgress(HdrStage.ALIGN, aligned.frames.size, total))
-
-                val warped = withContext(Dispatchers.Default) { FrameWarp.warpAll(width, height, aligned.frames) }
-                val fused = withContext(Dispatchers.Default) {
-                    ExposureFusion.fuse(warped) { current, fuseTotal ->
-                        _state.value = HdrScreen.Processing(HdrProgress(HdrStage.FUSE, current, fuseTotal))
-                    }
-                }
-                full = Rgb16Image.fromLinear(fused)
-                preview = withContext(Dispatchers.Default) { full!!.downscale(PREVIEW_MAX_SIDE) }
-                val bitmap = withContext(Dispatchers.Default) { ImageDecoding.rgb16ToBitmap(preview!!) }
-                _state.value = HdrScreen.Result(previewBitmap = bitmap, acceptedCount = aligned.frames.size, totalCount = total)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: OutOfMemoryError) {
-                release()
-                _state.value = picking.copy(error = "не хватило памяти - выберите меньше фото")
-            } catch (e: Exception) {
-                release()
-                _state.value = picking.copy(error = e.message ?: e.toString())
             }
         }
+    }
+
+    private suspend fun runPipeline(picking: HdrScreen.Picking, total: Int, maxTotalPixels: Long) {
+        _state.value = HdrScreen.Processing(HdrProgress(HdrStage.LOAD, 0, total))
+        val context = getApplication<Application>()
+        val images = ArrayList<FloatImage>()
+        for ((i, uri) in picking.photos.withIndex()) {
+            val decoded = withContext(Dispatchers.IO) { ImageDecoding.decodeFrame(context, uri, maxTotalPixels) }
+            val image = decoded.image ?: throw IllegalStateException("не удалось прочитать фото: ${decoded.displayName}")
+            images.add(image)
+            _state.value = HdrScreen.Processing(HdrProgress(HdrStage.LOAD, i + 1, total))
+        }
+        // Кадры одной HDR-серии снимаются с одной и той же точки без смены
+        // кадрирования - разный размер означает, что выбраны кадры из разных
+        // серий или с цифровым зумом между ними, выравнивание тут бессмысленно.
+        val width = images[0].width; val height = images[0].height
+        if (images.any { it.width != width || it.height != height }) {
+            throw IllegalStateException("фото разного размера - нужна серия с одной точки без смены зума")
+        }
+
+        val aligned = withContext(Dispatchers.Default) {
+            HdrAligner.align(images) { current, featuresTotal ->
+                _state.value = HdrScreen.Processing(HdrProgress(HdrStage.FEATURES, current, featuresTotal))
+            }
+        }
+        if (aligned.frames.size < 2) {
+            throw IllegalStateException("не удалось совместить кадры - нужна серия со штатива без смещения кадра")
+        }
+        _state.value = HdrScreen.Processing(HdrProgress(HdrStage.ALIGN, aligned.frames.size, total))
+
+        val warped = withContext(Dispatchers.Default) { FrameWarp.warpAll(width, height, aligned.frames) }
+        val fused = withContext(Dispatchers.Default) {
+            ExposureFusion.fuse(warped, referenceIndex = aligned.referenceFrameIndex) { current, fuseTotal ->
+                _state.value = HdrScreen.Processing(HdrProgress(HdrStage.FUSE, current, fuseTotal))
+            }
+        }
+        full = Rgb16Image.fromLinear(fused)
+        preview = withContext(Dispatchers.Default) { full!!.downscale(PREVIEW_MAX_SIDE) }
+        val bitmap = withContext(Dispatchers.Default) { ImageDecoding.rgb16ToBitmap(preview!!) }
+        _state.value = HdrScreen.Result(previewBitmap = bitmap, acceptedCount = aligned.frames.size, totalCount = total)
     }
 
     // ---------- Повернуть и обрезать (общая логика с "Астро"/"Панорамой") ----------
@@ -232,5 +240,7 @@ class HdrViewModel(application: Application) : AndroidViewModel(application) {
 
     private companion object {
         const val PREVIEW_MAX_SIDE = 2000
+        /** Выше разрешения любой реальной камеры - "без потолка" на первой попытке, но конкретное число (см. start()). */
+        const val UNLIMITED_PIXELS = 100_000_000L
     }
 }

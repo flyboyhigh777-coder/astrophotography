@@ -20,6 +20,13 @@ object FrameWarp {
         frames.map { warp(outputWidth, outputHeight, it) }
 
     private fun warp(outputWidth: Int, outputHeight: Int, frame: StackFrame): FloatImage {
+        // Опорный кадр (toReference=IDENTITY) уже в нужной системе координат -
+        // билинейная выборка в целых координатах при тождественном
+        // преобразовании и так вернула бы те же пиксели без изменений, так
+        // что просто возвращаем исходный кадр без лишней копии на весь кадр.
+        if (frame.toReference == SimilarityTransform.IDENTITY && frame.image.width == outputWidth && frame.image.height == outputHeight) {
+            return frame.image
+        }
         val inverse = frame.toReference.inverse()
         val src = frame.image
         val r = FloatArray(outputWidth * outputHeight)
