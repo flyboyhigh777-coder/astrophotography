@@ -4,7 +4,6 @@ import com.astrostacker.core.pano.PanoFeatures
 import com.astrostacker.core.pano.PanoImage
 import kotlin.math.abs
 import kotlin.math.hypot
-import kotlin.math.sqrt
 
 /** [reason] - для экрана результата ("ok"/почему кадр не вошёл в слияние). */
 data class HdrFrameOutcome(
@@ -52,8 +51,6 @@ object HdrAligner {
         // проходит, т.к. второй по близости кандидат почти не хуже первого.
         val matchRatio: Double = 0.65,
         val ransac: RansacConfig = RansacConfig(inlierThresholdPx = 3.0, minInliers = 10),
-        val affineEscalationRmsThresholdPx: Double = 2.0,
-        val affineEscalationMinInliers: Int = 12,
         /**
          * Кадры одной HDR-серии снимаются без намеренного зума - если
          * найденное преобразование подразумевает масштаб заметно не 1.0, оно
@@ -64,7 +61,17 @@ object HdrAligner {
          */
         val maxScaleDeviation: Double = 0.08,
         /** Сдвиг (доля диагонали кадра) выше этого считается неправдоподобным для одной серии. */
-        val maxTranslationFraction: Double = 0.25
+        val maxTranslationFraction: Double = 0.25,
+        /**
+         * Камера между кадрами одной HDR-серии не переворачивается - только
+         * небольшой поворот от дрожания руки. Без этой проверки преобразование
+         * с масштабом ~1 и небольшим сдвигом, но поворотом хоть на 90°,
+         * формально проходило бы проверку выше (там масштаб и сдвиг, не
+         * поворот) - а при развороте такого кадра в общую систему координат
+         * содержимое растягивается вдоль одной оси и сжимается вдоль другой,
+         * давая на выходе полосы-"разрывы", а не просто смазанный край.
+         */
+        val maxRotationDegrees: Double = 10.0
     )
 
     /**
@@ -114,23 +121,23 @@ object HdrAligner {
                 continue
             }
 
-            var transform: Transform2D = ransac.transform
-            var rms = ransac.rmsResidual
-            if (rms > config.affineEscalationRmsThresholdPx && ransac.inlierIndices.size >= config.affineEscalationMinInliers) {
-                val inlierMatches = ransac.inlierIndices.map { matches[it] }
-                val affine = AffineFit.fitLeastSquares(inlierMatches)
-                if (affine != null) {
-                    val affineRms = rmsResidual(affine, inlierMatches)
-                    if (affineRms < rms) { transform = affine; rms = affineRms }
-                }
-            }
-
+            val transform = ransac.transform
+            // БЕЗ эскалации до аффинного (в отличие от FrameRegistrator/звёзд):
+            // аффинное преобразование - 6 независимых степеней свободы, оно
+            // может описать не только небольшой перекос, но и ОТРАЖЕНИЕ/обмен
+            // осей x<->y, если МНК на зашумлённых (от повторяющейся текстуры)
+            // соответствиях случайно сойдётся к такой матрице - при этом каждый
+            // столбец может иметь длину ~1 (пройдёт проверку масштаба), но
+            // геометрически это уже не "лёгкий перекос", а каша. У HDR нет
+            // той практической необходимости в аффинном, что есть у панорамы/
+            // звёзд (кадры с одной точки, без перспективных искажений) - риск
+            // от лишних степеней свободы перевешивает пользу.
             if (!isPlausible(transform, images[i].width, images[i].height, config)) {
-                outcomes.add(HdrFrameOutcome(i, false, "совмещение получилось неправдоподобным (похоже, повторяющаяся текстура сбила сопоставление точек)", ransac.inlierIndices.size, rms))
+                outcomes.add(HdrFrameOutcome(i, false, "совмещение получилось неправдоподобным (похоже, повторяющаяся текстура сбила сопоставление точек)", ransac.inlierIndices.size, ransac.rmsResidual))
                 continue
             }
             stackFrames.add(StackFrame(images[i], transform))
-            outcomes.add(HdrFrameOutcome(i, true, "ok", ransac.inlierIndices.size, rms))
+            outcomes.add(HdrFrameOutcome(i, true, "ok", ransac.inlierIndices.size, ransac.rmsResidual))
         }
 
         return HdrAlignResult(refIdx, referenceFrameIndex, stackFrames, outcomes)
@@ -146,21 +153,11 @@ object HdrAligner {
      * что геометрия найдена неверно, а не то, что камера и правда так
      * сдвинулась.
      */
-    private fun isPlausible(transform: Transform2D, width: Int, height: Int, config: Config): Boolean {
+    private fun isPlausible(transform: SimilarityTransform, width: Int, height: Int, config: Config): Boolean {
         val diag = hypot(width.toDouble(), height.toDouble())
-        return when (transform) {
-            is SimilarityTransform ->
-                abs(transform.scale - 1.0) <= config.maxScaleDeviation &&
-                    hypot(transform.tx, transform.ty) <= config.maxTranslationFraction * diag
-            is AffineTransform -> {
-                // Приближённый масштаб по столбцам линейной части (a,d) и (b,e).
-                val scaleX = hypot(transform.a, transform.d)
-                val scaleY = hypot(transform.b, transform.e)
-                abs(scaleX - 1.0) <= config.maxScaleDeviation &&
-                    abs(scaleY - 1.0) <= config.maxScaleDeviation &&
-                    hypot(transform.c, transform.f) <= config.maxTranslationFraction * diag
-            }
-        }
+        return abs(transform.scale - 1.0) <= config.maxScaleDeviation &&
+            hypot(transform.tx, transform.ty) <= config.maxTranslationFraction * diag &&
+            abs(Math.toDegrees(transform.rotationRad)) <= config.maxRotationDegrees
     }
 
     private fun meanLuminance(image: FloatImage): Double {
@@ -168,16 +165,5 @@ object HdrAligner {
         var sum = 0.0
         for (v in lum.data) sum += v
         return sum / lum.data.size
-    }
-
-    private fun rmsResidual(transform: Transform2D, matches: List<PointMatch>): Double {
-        if (matches.isEmpty()) return 0.0
-        var sumSq = 0.0
-        for (m in matches) {
-            val p = transform.apply(m.from)
-            val dx = p.x - m.to.x; val dy = p.y - m.to.y
-            sumSq += dx * dx + dy * dy
-        }
-        return sqrt(sumSq / matches.size)
     }
 }
