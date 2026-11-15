@@ -17,6 +17,14 @@ data class HdrFrameOutcome(
 
 data class HdrAlignResult(
     val referenceIndex: Int,
+    /**
+     * Позиция опорного кадра ВНУТРИ [frames] - НЕ совпадает с [referenceIndex],
+     * если более ранние по порядку кадры были отброшены (неправдоподобное
+     * совмещение). Нужна [ExposureFusion] для обнаружения "призраков"
+     * ([GhostDetector]) - там опорный кадр ищется по позиции в уже
+     * отфильтрованном списке, а не по исходному индексу.
+     */
+    val referenceFrameIndex: Int,
     /** Только успешно совмещённые кадры - уже готовы для [FrameWarp]/[ExposureFusion]. */
     val frames: List<StackFrame>,
     val outcomes: List<HdrFrameOutcome>
@@ -83,9 +91,11 @@ object HdrAligner {
 
         val outcomes = ArrayList<HdrFrameOutcome>()
         val stackFrames = ArrayList<StackFrame>()
+        var referenceFrameIndex = -1
 
         for (i in images.indices) {
             if (i == refIdx) {
+                referenceFrameIndex = stackFrames.size
                 stackFrames.add(StackFrame(images[i], SimilarityTransform.IDENTITY))
                 outcomes.add(HdrFrameOutcome(i, true, "опорный кадр"))
                 continue
@@ -123,7 +133,7 @@ object HdrAligner {
             outcomes.add(HdrFrameOutcome(i, true, "ok", ransac.inlierIndices.size, rms))
         }
 
-        return HdrAlignResult(refIdx, stackFrames, outcomes)
+        return HdrAlignResult(refIdx, referenceFrameIndex, stackFrames, outcomes)
     }
 
     /**

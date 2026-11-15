@@ -137,7 +137,7 @@ class HdrViewModel(application: Application) : AndroidViewModel(application) {
 
         val warped = withContext(Dispatchers.Default) { FrameWarp.warpAll(width, height, aligned.frames) }
         val fused = withContext(Dispatchers.Default) {
-            ExposureFusion.fuse(warped) { current, fuseTotal ->
+            ExposureFusion.fuse(warped, referenceIndex = aligned.referenceFrameIndex) { current, fuseTotal ->
                 _state.value = HdrScreen.Processing(HdrProgress(HdrStage.FUSE, current, fuseTotal))
             }
         }

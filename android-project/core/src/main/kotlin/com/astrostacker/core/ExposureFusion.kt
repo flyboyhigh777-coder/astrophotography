@@ -30,18 +30,26 @@ object ExposureFusion {
         /** Сигма гауссианы "хорошей экспозиции" вокруг середины тонового диапазона (0.5). */
         val exposednessSigma: Double = 0.2,
         /** Верхняя граница числа уровней пирамиды - реальное число также ограничено размером кадра. */
-        val maxPyramidLevels: Int = 7
+        val maxPyramidLevels: Int = 7,
+        /** См. [GhostDetector] - 0 выключает обнаружение сдвинувшихся между кадрами объектов. */
+        val ghostToleranceStops: Double = 1.0
     )
 
-    /** [onProgress] - (сколько каналов готово, всего каналов=3), для индикатора прогресса в интерфейсе. */
-    fun fuse(images: List<FloatImage>, config: Config = Config(), onProgress: (Int, Int) -> Unit = { _, _ -> }): FloatImage {
+    /**
+     * [referenceIndex] - позиция опорного кадра совмещения ВНУТРИ [images] (см.
+     * [HdrAlignResult.referenceFrameIndex]) - используется только для
+     * обнаружения "призраков" ([GhostDetector]), на само слияние не влияет.
+     * [onProgress] - (сколько каналов готово, всего каналов=3), для индикатора прогресса в интерфейсе.
+     */
+    fun fuse(images: List<FloatImage>, referenceIndex: Int = 0, config: Config = Config(), onProgress: (Int, Int) -> Unit = { _, _ -> }): FloatImage {
         require(images.isNotEmpty()) { "Нужен хотя бы один кадр" }
         val width = images[0].width
         val height = images[0].height
         for (img in images) require(img.width == width && img.height == height) { "Кадры должны быть одного размера (уже выровнены)" }
         if (images.size == 1) return images[0]
+        require(referenceIndex in images.indices) { "referenceIndex вне диапазона" }
 
-        val weights = normalizedWeights(images, config)
+        val weights = normalizedWeights(images, referenceIndex, config)
         val levels = pyramidLevelCount(width, height, config.maxPyramidLevels)
 
         val r = fuseChannel(images.map { it.r }, weights, width, height, levels); onProgress(1, 3)
@@ -53,10 +61,14 @@ object ExposureFusion {
     // ---------- Веса ----------
 
     /** Вес каждого кадра в каждом пикселе, нормированный так, чтобы в сумме по кадрам давать 1. */
-    private fun normalizedWeights(images: List<FloatImage>, config: Config): List<FloatArray> {
+    private fun normalizedWeights(images: List<FloatImage>, referenceIndex: Int, config: Config): List<FloatArray> {
         val n = images.size
         val size = images[0].width * images[0].height
         val raw = images.map { rawWeight(it, config) }
+        if (config.ghostToleranceStops > 0.0) {
+            val ghost = GhostDetector.consistencyWeights(images, referenceIndex, GhostDetector.Config(config.ghostToleranceStops))
+            for (k in 0 until n) for (i in 0 until size) raw[k][i] *= ghost[k][i]
+        }
         val out = List(n) { FloatArray(size) }
         for (i in 0 until size) {
             var sum = 0.0
