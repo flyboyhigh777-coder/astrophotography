@@ -116,6 +116,24 @@
     <string name="pano_picker_take_photo">Снять камерой</string>
     <string name="pano_picker_no_camera">Не найдено приложение камеры</string>
 
+    <!-- HDR -->
+    <string name="tab_hdr">HDR</string>
+    <string name="hdr_title">HDR</string>
+    <string name="hdr_instructions">Выберите 2 и больше фото одной и той же неподвижной сцены с РАЗНОЙ выдержкой/яркостью — например, серию с ручной экспозицией или брекетинг из родной камеры телефона. Приложение само совместит небольшой сдвиг между кадрами и соберёт один снимок, где проработаны и светлые, и тёмные участки.</string>
+    <string name="hdr_select_photos">Выбрать фото</string>
+    <string name="hdr_min_photos">Нужно выбрать хотя бы 2 фото</string>
+    <string name="hdr_start">Слить экспозиции</string>
+    <string name="hdr_processing_title">Слияние экспозиций</string>
+    <string name="hdr_stage_load">Чтение фото</string>
+    <string name="hdr_stage_features">Поиск особых точек</string>
+    <string name="hdr_stage_align">Совмещение кадров</string>
+    <string name="hdr_stage_fuse">Слияние светов и теней</string>
+    <string name="hdr_result_title">HDR</string>
+    <string name="hdr_result_info">Использовано кадров: %1$d из %2$d</string>
+    <string name="hdr_result_skipped">Кадры не удалось совместить: %1$d — не вошли в результат.</string>
+    <string name="hdr_tips_title">Как снимать</string>
+    <string name="hdr_tips">• Штатив или твёрдая опора — чем меньше сдвиг между кадрами, тем лучше результат (небольшой сдвиг руки приложение компенсирует само).\n• 2–5 кадров одной и той же сцены с разной выдержкой — от сильно тёмного до сильно светлого.\n• Не меняйте зум, фокус и точку съёмки между кадрами.\n• Подходит и для пейзажей, и для неба с ярким объектом (луна, городские огни) на фоне тёмного неба.</string>
+
     <!-- Звёздные треки -->
     <string name="tab_trails">Треки</string>
     <string name="px_suffix">пикс.</string>

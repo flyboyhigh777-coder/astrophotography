@@ -112,6 +112,24 @@
     <string name="pano_picker_take_photo">Take with camera</string>
     <string name="pano_picker_no_camera">No camera app found</string>
 
+    <!-- HDR -->
+    <string name="tab_hdr">HDR</string>
+    <string name="hdr_title">HDR</string>
+    <string name="hdr_instructions">Pick 2 or more photos of the same still scene with DIFFERENT exposure/brightness - e.g. a manual-exposure series or your phone\'s built-in bracketing. The app aligns any small shift between frames and merges them into one photo with detail in both highlights and shadows.</string>
+    <string name="hdr_select_photos">Select photos</string>
+    <string name="hdr_min_photos">Please select at least 2 photos</string>
+    <string name="hdr_start">Merge exposures</string>
+    <string name="hdr_processing_title">Merging exposures</string>
+    <string name="hdr_stage_load">Reading photos</string>
+    <string name="hdr_stage_features">Finding feature points</string>
+    <string name="hdr_stage_align">Aligning frames</string>
+    <string name="hdr_stage_fuse">Merging highlights and shadows</string>
+    <string name="hdr_result_title">HDR</string>
+    <string name="hdr_result_info">Frames used: %1$d of %2$d</string>
+    <string name="hdr_result_skipped">Frames that could not be aligned: %1$d - left out of the result.</string>
+    <string name="hdr_tips_title">How to shoot</string>
+    <string name="hdr_tips">• A tripod or steady support - the less the frames shift, the better the result (the app corrects a small hand shake on its own).\n• 2-5 photos of the same scene at different exposures - from quite dark to quite bright.\n• Don\'t change zoom, focus or the shooting position between frames.\n• Works for landscapes as well as a bright object (the moon, city lights) against a dark sky.</string>
+
     <!-- Звёздные треки -->
     <string name="tab_trails">Trails</string>
     <string name="px_suffix">px</string>
