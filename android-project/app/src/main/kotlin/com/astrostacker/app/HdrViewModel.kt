@@ -80,15 +80,21 @@ class HdrViewModel(application: Application) : AndroidViewModel(application) {
             _state.value = HdrScreen.Processing(HdrProgress(HdrStage.LOAD, 0, total))
             try {
                 val context = getApplication<Application>()
-                // Помимо N кадров разом, слияние экспозиций держит на кадр ещё пирамиды
-                // Гаусса/Лапласа (контраст/насыщенность/экспонированность + сами кадры
-                // канал за каналом) - по памяти это сопоставимо ещё с одним полноразмерным
-                // кадром на каждый входной (взято с запасом сверху, не измерено
-                // профайлером - см. MemoryBudget.kt).
-                val budget = MemoryBudget.compute(frameCount = total, extraFullFrames = total * 2)
+                // НЕ MemoryBudget.compute - она рассчитана на пайплайн "Астро" и всегда
+                // добавляет +5 "лишних" буферов под шаги, которых у HDR нет (вычитание
+                // градиента/растяжка/шумоподавление, см. ProcessingViewModel) - для
+                // небольшой серии HDR (обычно 2-5 кадров) это непропорционально много и
+                // режет разрешение почти до минимума. Отдельный расчёт в духе Панорамы:
+                // одновременно в памяти - сами N кадров (FloatImage, 12 байт/пиксель) плюс
+                // их выровненные копии и пирамиды Гаусса/Лапласа слияния экспозиций - по
+                // памяти сопоставимо примерно с удвоенным числом кадров. Взято с запасом
+                // сверху, не измерено профайлером (как и у PanoramaViewModel.start()).
+                val heap = Runtime.getRuntime().maxMemory()
+                val maxTotalPixels = (heap * 0.6 / 12 / (total * 2.0)).toLong()
+                    .coerceIn(MemoryBudget.MIN_TOTAL_PIXELS, MemoryBudget.HARD_CAP_TOTAL_PIXELS)
                 val images = ArrayList<FloatImage>()
                 for ((i, uri) in picking.photos.withIndex()) {
-                    val decoded = withContext(Dispatchers.IO) { ImageDecoding.decodeFrame(context, uri, budget.maxTotalPixels) }
+                    val decoded = withContext(Dispatchers.IO) { ImageDecoding.decodeFrame(context, uri, maxTotalPixels) }
                     val image = decoded.image
                     if (image == null) {
                         _state.value = picking.copy(error = "не удалось прочитать фото: ${decoded.displayName}")
